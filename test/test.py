@@ -152,6 +152,15 @@ Empty arrays and tuples should work:
     >>> saveload([])
     []
 
+As should empty strings and "empty" longs
+
+    >>> saveload(0L)
+    0L
+    >>> saveload('')
+    ''
+    >>> saveload(u'')
+    u''
+
 
 Dicts
 -----
@@ -332,8 +341,12 @@ New-style class with __set/getstate___
     'boo'
 
 
+Saved structure
+---------------
+
 
 """
+
 import sys, os
 import tables
 import doctest, unittest
