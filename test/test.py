@@ -337,6 +337,7 @@ New-style class with __set/getstate___
 import sys, os
 import tables
 import doctest, unittest
+import copy_reg
 
 import test_support, pickletester
 
@@ -376,22 +377,64 @@ class PickleTests(pickletester.AbstractPickleTests,
         finally:
             f.close()
 
-    # Prune out pickle tests that mess with the bytestream
+    # Prune out pickle tests that only mess with the bytestream
+    
     def test_dict_chunking(self): pass
-    def test_global_ext1(self): pass
-    def test_global_ext2(self): pass
-    def test_global_ext4(self): pass
     def test_insecure_strings(self): pass
     def test_list_chunking(self): pass
     def test_load_from_canned_string(self): pass
-    def test_long1(self): pass
-    def test_long4(self): pass
     def test_maxint64(self): pass
     def test_proto(self): pass
     def test_short_tuples(self): pass
-    def test_simple_newobj(self): pass
-    def test_singletons(self): pass
 
+    # These needed to be reimplemented: just cut stuff that compares raw output
+    
+    def produce_global_ext(self, extcode, opcode):
+        e = pickletester.ExtensionSaver(extcode)
+        try:
+            copy_reg.add_extension("pickletester", "MyList", extcode)
+            x = pickletester.MyList([1, 2, 3])
+            x.foo = 42
+            x.bar = "hello"
+
+            # Just test, don't examine output
+            s2 = self.dumps(x, 2)
+            y = self.loads(s2)
+            self.assertEqual(list(x), list(y))
+            self.assertEqual(x.__dict__, y.__dict__)
+        finally:
+            e.restore()
+
+    def test_long1(self):
+        x = 12345678910111213141516178920L
+        for proto in pickletester.protocols:
+            s = self.dumps(x, proto)
+            y = self.loads(s)
+            self.assertEqual(x, y)
+
+    def test_long4(self):
+        x = 12345678910111213141516178920L << (256*8)
+        for proto in pickletester.protocols:
+            s = self.dumps(x, proto)
+            y = self.loads(s)
+            self.assertEqual(x, y)
+
+    def test_simple_newobj(self):
+        x = object.__new__(pickletester.SimpleNewObj)  # avoid __init__
+        x.abc = 666
+        for proto in pickletester.protocols:
+            s = self.dumps(x, proto)
+            #self.assertEqual(opcode_in_pickle(pickle.NEWOBJ, s), proto >= 2)
+            y = self.loads(s)   # will raise TypeError if __init__ called
+            self.assertEqual(y.abc, 666)
+            self.assertEqual(x.__dict__, y.__dict__)
+
+    def test_singletons(self):
+        for proto in pickletester.protocols:
+            for x in None, False, True:
+                s = self.dumps(x, proto)
+                y = self.loads(s)
+                self.assert_(x is y, (proto, x, s, y))
 
 def _test():
     try:
