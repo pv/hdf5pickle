@@ -1,7 +1,7 @@
 from copy_reg import dispatch_table
 from copy_reg import _extension_registry, _inverted_registry, _extension_cache
 from types import *
-import keyword
+import keyword, marshal
 import tables, numarray, cPickle as pickle, re, struct, sys
 
 from pickle import whichmodule, PicklingError, FLOAT, INT, LONG, NONE, \
@@ -694,7 +694,7 @@ class Unpickler:
 
     def load_ext(self, node):
         data = str(self._load_array(node))
-        code = mloads('i' + data)
+        code = marshal.loads('i' + data)
         return self.get_extension(code)
     dispatch[EXT4] = load_ext
 
