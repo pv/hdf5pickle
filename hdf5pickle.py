@@ -42,6 +42,13 @@ def _setattr(obj, attr, value):
     else:
         setattr(obj.attrs, attr, value)
 
+def _hasattr(obj, attr):
+    try:
+        _getattr(obj, attr)
+        return True
+    except AttributeError:
+        return False
+
 def _getattr(obj, attr):
     if isinstance(obj, tables.Group):
         return obj._f_getAttr(attr)
@@ -76,7 +83,9 @@ class Pickler(object):
         where, name = _splitpath(path)
         if ((not hasattr(data, 'shape') or data.shape != ()) and
                 hasattr(data, '__len__') and len(data) == 0):
-            return self.file.createGroup(where, name)
+            array = self.file.createArray(where, name, 0)
+            _setattr(array, 'empty', 1)
+            return array
         else:
             return self.file.createArray(where, name, data)
 
@@ -276,10 +285,7 @@ class Pickler(object):
     dispatch[ComplexType] = save_complex
 
     def save_string(self, path, obj):
-        if len(obj) > 0:
-            node = self._save_array(path, obj)
-        else:
-            node = self._new_group(path)
+        node = self._save_array(path, obj)
         _setattr(node, 'pickletype', STRING)
     dispatch[StringType] = save_string
 
@@ -441,11 +447,11 @@ class Unpickler:
         except LookupError:
             return False
 
-    def _load_array(self, node):
-        if isinstance(node, tables.Group):
-            return None
+    def _load_array(self, node, type_):
+        if _hasattr(node, 'empty'):
+            return type_()
         else:
-            return node.read()
+            return type_(node.read())
 
     def load(self, path):
         if not path in self.memo:
@@ -455,7 +461,7 @@ class Unpickler:
                 f = self.dispatch[key]
                 obj = f(self, node)
             else:
-                obj = self._load_array(node)
+                obj = node.read()
             self.memo[path] = obj
         return self.memo[path]
 
@@ -510,53 +516,40 @@ class Unpickler:
     dispatch[NONE] = load_none
 
     def load_bool(self, node):
-        return bool(node.read())
+        return self._load_array(node, bool)
     dispatch[BOOL] = load_bool
 
     def load_int(self, node):
-        return int(self._load_array(node))
+        return self._load_array(node, int)
     dispatch[INT] = load_int
 
     def load_long(self, node):
-        data = self._load_array(node)
-        if data is None:
-            return 0L
-        else:
-            return decode_long(str(data))
+        data = self._load_array(node, str)
+        return decode_long(data)
     dispatch[LONG] = load_long
 
     def load_float(self, node):
-        return float(self._load_array(node))
+        return self._load_array(node, float)
     dispatch[FLOAT] = load_float
 
     def load_complex(self, node):
-        data = self._load_array(node)
-        if data is None:
-            return 0+0j
-        else:
-            data.ravel()
-            return complex(data[0])
+        data = node.read()
+        data.ravel()
+        return complex(data[0])
     dispatch[COMPLEX] = load_complex
 
     def load_string(self, node):
-        data = self._load_array(node)
-        if data is None:
-            return ''
-        else:
-            return str(data)
+        return self._load_array(node, str)
     dispatch[STRING] = load_string
 
     def load_unicode(self, node):
-        data = self._load_array(node)
-        if data is None:
-            return u''
-        else:
-            return str(data).decode('utf-8')
+        data = self._load_array(node, str)
+        return data.decode('utf-8')
     dispatch[UNICODE] = load_unicode
 
     def _load_list(self, node):
         if isinstance(node, tables.Array):
-            return self._load_array(node)
+            return node.read()
 
         items = []
         self.memo[node._v_pathname] = items # avoid infinite loop
@@ -687,13 +680,13 @@ class Unpickler:
                 setattr(inst, k, v)
 
     def load_global(self, node):
-        data = str(self._load_array(node))
+        data = self._load_array(node, str)
         module, name = data.split('\n')
         return self.find_class(module, name)
     dispatch[GLOBAL] = load_global
 
     def load_ext(self, node):
-        data = str(self._load_array(node))
+        data = self._load_array(node, str)
         code = marshal.loads('i' + data)
         return self.get_extension(code)
     dispatch[EXT4] = load_ext
