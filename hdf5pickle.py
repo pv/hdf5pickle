@@ -5,13 +5,95 @@ hdf5pickle
 
 :Author:  Pauli Virtanen <pav@iki.fi>
 
-Create human-readable representations of Python objects in HDF5 files.
+Create easily interfaceable representations of Python objects in HDF5
+files. The aim of this module is to provide both
 
-`dump` and `load` methods analogous to Python's pickle module are
-implemented here. The data interface corresponds to pickle protocol 2,
-although the data is not serialized but saved in HDF5 files.
+    (1) convenient Python object persistence
+    (2) compatibility with non-Python applications
+
+Point 2 is important, for example, if results from numerical
+calculations should be easily transferable for example to a non-Python
+visualization program. Writing code for dumping data creates mostly
+unnecessary hassle.
+
+This module implements `dump` and `load` methods analogous to those in
+Python's pickle module. The programming interface corresponds to
+pickle protocol 2, although the data is not serialized but saved in
+HDF5 files.
+
+
+Data format
+-----------
+
+The structure of a python object saved to a HDF5 node is as follows:
+
+* basic types (None, bool, int, float, complex)::
+
+    array [(1,), int/float] = NONE/BOOL/INT/FLOAT/COMPLEX
+        .pickletype         = PICKLE_TYPE
+
+* basic stream types (long, str, unicode).
+  longs and unicodes are converted to strs (pickle.encode_long and utf-8)::
+
+    array [(n,), int8] = DATA
+        .pickletype    = LONG/STR/UNICODE
+        .empty     = 1 #if len(DATA) == 0
+    
+   These can't at present be stored as real string arrays, as PyTables
+   chops of strings at '\x00' chars.
+
+* dicts::
+
+    group
+        .pickletype  = DICT
+
+        #for KEY, VALUE in DICT:
+         #if KEY is a string and a valid python variable name
+        KEY          = node for VALUE
+         #else
+        SURROGATE    = node for VALUE
+        __/SURROGATE = node for KEY
+         #end if
+        #end for
+    
+* instances::
+
+    group
+        .pickletype         = INST/REDUCE
+    
+        #if through __reduce__ / new-style class
+        .has_reduce_content = 1 if state present
+        __/args             = arguments for class.__new__ or func
+        __/func             = creation func
+        __/cls              = creation class
+        #else
+        __/args             = arguments for class.__init__
+        __/cls              = creation class
+        #endif
+    
+        #if state is dict
+        insert entries of dict here as in dict
+        #else
+        __/content          = node for content
+        #endif
+
+* globals (classes, etc)::
+
+    array [as for strings] = GLOBAL/EXT4 data locator, as in pickle
+        .pickletype        = GLOBAL/EXT4
+
+* reference to an object elsewhere::
+
+    group
+        .pickletype        = REF
+        .target            = abs. path to the referred object in this file
 
 """
+
+__all__ = ['dump', 'load', 'Pickler', 'Unpickler']
+
+__revision__ = "$Id: hdf5serialize.py 2937 2006-07-28 18:42:24Z pauli $"
+__docformat__ = "restructuredtext en"
 
 
 from copy_reg import dispatch_table
@@ -23,9 +105,6 @@ import tables, numarray, cPickle as pickle, re, struct, sys
 from pickle import whichmodule, PicklingError, FLOAT, INT, LONG, NONE, \
      REDUCE, STRING, UNICODE, GLOBAL, DICT, INST, LIST, TUPLE, EXT4, \
      encode_long, decode_long
-
-__revision__ = "$Id: hdf5serialize.py 2937 2006-07-28 18:42:24Z pauli $"
-__docformat__ = "restructuredtext en"
 
 BOOL    = 'BB'
 REF     = 'RR'
@@ -829,7 +908,22 @@ def check_pytables_name(key):
         return False
 
 def dump(obj, file, path):
+    """
+    Dump a Python object to an open PyTables HDF5 file.
+    
+    :Parameters:
+      - `obj`: the object to save
+      - `file`: `tables.File` handle (`tables.File`)
+      - `path`: path to the object in the file (string)
+    """
     Pickler(file).dump(obj, path)
 
 def load(file, path):
+    """
+    Load a Python object from an open PyTables HDF5 file.
+    
+    :Parameters:
+      - `file`: file handle (`tables.File`)
+      - `path`: path to the object in the file (string)
+    """
     return Unpickler(file).load(path)
