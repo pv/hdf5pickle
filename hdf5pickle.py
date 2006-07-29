@@ -1,3 +1,19 @@
+"""
+==========
+hdf5pickle
+==========
+
+:Author:  Pauli Virtanen <pav@iki.fi>
+
+Create human-readable representations of Python objects in HDF5 files.
+
+`dump` and `load` methods analogous to Python's pickle module are
+implemented here. The data interface corresponds to pickle protocol 2,
+although the data is not serialized but saved in HDF5 files.
+
+"""
+
+
 from copy_reg import dispatch_table
 from copy_reg import _extension_registry, _inverted_registry, _extension_cache
 from types import *
