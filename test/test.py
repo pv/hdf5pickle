@@ -52,6 +52,7 @@ Pickling tests
     ...     try:
     ...         try: os.unlink('hdf5test.h5')
     ...         except IOError: pass
+    ...         except OSError: pass
     ...         f = tables.openFile('hdf5test.h5', 'w')
     ...         try: p.dump(obj, f, '/obj')
     ...         finally: f.close()
@@ -72,7 +73,8 @@ Pickling tests
     ...     finally: f.close()
 
     >>> def modulelevel(item):
-    ...     m = __import__(item.__module__)
+    ...     m = __import__('__main__')
+    ...     item.__module__ = '__main__'
     ...     if hasattr(item, '__name__'):
     ...         name = item.__name__
     ...     else:
@@ -415,6 +417,12 @@ Array types
     ...         assert (numarray.all(a == a2) and type(a) == type(a2) and
     ...                 a.typecode() == a2.typecode())
 
+
+Cleanup
+-------
+>>> try: os.unlink('hdf5test.h5')
+... except IOError: pass
+... except OSError: pass
 """
 
 import sys, os
@@ -423,11 +431,7 @@ import doctest, unittest
 import copy_reg
 
 import test_support, pickletester
-
-ppath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(ppath)
 import hdf5pickle as p
-sys.path.pop()
 
 class PickleTests(pickletester.AbstractPickleTests,
                   #test.pickletester.AbstractPersistentPicklerTests
@@ -438,6 +442,7 @@ class PickleTests(pickletester.AbstractPickleTests,
     def dumps(self, arg, proto=0, fast=0):
         try: os.unlink('hdf5test.h5')
         except IOError: pass
+        except OSError: pass
         f = tables.openFile('hdf5test.h5', 'w')
         try:
             p.dump(arg, f, '/obj')
@@ -459,6 +464,11 @@ class PickleTests(pickletester.AbstractPickleTests,
             return p.load(f, '/obj')
         finally:
             f.close()
+
+    def tearDown(self):
+        try: os.unlink('hdf5test.h5')
+        except IOError: pass
+        except OSError: pass
 
     # Prune out pickle tests that only mess with the bytestream
     
@@ -519,13 +529,8 @@ class PickleTests(pickletester.AbstractPickleTests,
                 y = self.loads(s)
                 self.assert_(x is y, (proto, x, s, y))
 
-def _test():
-    try:
-        test_support.run_unittest(
-            PickleTests
-            )
-    except:
-        pass
-    test_support.run_doctest(__import__('__main__'), verbosity=0)
-
-if __name__ == "__main__": _test()
+def additional_tests():
+    suite = unittest.TestSuite()
+    suite.addTests(doctest.DocTestSuite())
+    #suite.addTests(doctest.DocTestSuite(p))
+    return suite
