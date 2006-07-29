@@ -118,8 +118,8 @@ Homogenous list should be saved as arrays:
 
     >>> saveload(['a', 'b', 'c', 'd', 'e', 'f'])
     ['a', 'b', 'c', 'd', 'e', 'f']
-    >>> map(int, loadnode().shape)
-    [6]
+    >>> type(loadnode())
+    <class 'tables.Group.Group'>
 
 Mixed list not so:
 
@@ -137,8 +137,8 @@ Simple tuples, like lists
 
     >>> saveload(('a', 'b', 'c', 'd', 'e', 'f'))
     ('a', 'b', 'c', 'd', 'e', 'f')
-    >>> map(int, loadnode().shape)
-    [6]
+    >>> type(loadnode())
+    <class 'tables.Group.Group'>
 
     >>> saveload((1, 2, 'c', 'a', 'b'))
     (1, 2, 'c', 'a', 'b')
@@ -254,7 +254,7 @@ The contents of the class are naturally placed
     >>> loaditem('/obj/quux')
     array((2+3j))
 
-    >>> loaditem('/obj/__/cls')
+    >>> loaditem('/obj/__/cls').tostring()
     '__main__\nCls'
 
 Picklable dict with init arguments
@@ -282,8 +282,8 @@ overridden after __init__ is called.
     >>> y.a
     42L
 
-    >>> loaditem('/obj/__/args')
-    ('foo', 'bar')
+    >>> type(loadnode('/obj/__/args'))
+    <class 'tables.Group.Group'>
 
 New-style class using __getnewargs__.
 
@@ -319,7 +319,7 @@ Old-style class with __set/getstate__
     >>> y.a
     'boo'
 
-    >>> loaditem('/obj/baize')
+    >>> loaditem('/obj/baize').tostring()
     'boo'
 
 New-style class with __set/getstate___
@@ -337,13 +337,83 @@ New-style class with __set/getstate___
     >>> y.a
     'boo'
 
-    >>> loaditem('/obj/baize')
+    >>> loaditem('/obj/baize').tostring()
     'boo'
-
 
 Saved structure
 ---------------
 
+The saved data structures should be sensible (some of this was tested above).
+
+First basic container types:
+
+    >>> saveload([1, 2, 3, 4, 5, 6, 7])
+    [1, 2, 3, 4, 5, 6, 7]
+    >>> loaditem('/obj')
+    array([1, 2, 3, 4, 5, 6, 7])
+
+    >>> saveload((1, 2, 3, 4, 5, 6, 7))
+    (1, 2, 3, 4, 5, 6, 7)
+    >>> loaditem('/obj')
+    array([1, 2, 3, 4, 5, 6, 7])
+
+    >>> saveload((0.25, 2., 3., 4., 5., 66., 73.))
+    (0.25, 2.0, 3.0, 4.0, 5.0, 66.0, 73.0)
+    >>> tuple(loaditem('/obj'))
+    (0.25, 2.0, 3.0, 4.0, 5.0, 66.0, 73.0)
+
+    >>> x = {'abba': 1, 'caca': 'zhar'}
+    >>> saveload(x) == x
+    True
+    >>> loaditem('/obj/abba')
+    1
+    >>> loaditem('/obj/caca').tostring()
+    'zhar'
+
+Instances should also be saved sensibly:
+
+    >>> class Cls:
+    ...     def __init__(self, abc_132, lll_123):
+    ...         self.abc_132 = abc_132
+    ...         self.lll_123 = lll_123
+    >>> modulelevel(Cls)
+    >>> x = saveload(Cls('abb', 2**80))
+    >>> loaditem('/obj/abc_132').tostring()
+    'abb'
+    >>> loaditem('/obj/lll_123').tostring() # saved long bytecode!
+    '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01'
+
+Ditto for nested instances
+
+    >>> class Cls2:
+    ...     def __init__(self, baz):
+    ...         self.baz = baz
+    ...         self.asc = Cls(111, 222)
+    >>> modulelevel(Cls2)
+    >>> x = saveload(Cls2('baz'))
+    >>> loaditem('/obj/baz').tostring()
+    'baz'
+    >>> loaditem('/obj/asc/abc_132')
+    111
+    >>> loaditem('/obj/asc/lll_123')
+    222
+
+
+Array types
+-----------
+
+    >>> import numarray, pickle
+
+    >>> for pkg in ['numarray', 'Numeric']:#, 'numpy']:
+    ...     for ary in [ [1.,2.,3.],
+    ...                  [[1+0j,2+3.2j],[2,4]],
+    ...                  'abba\x000caca\x000',
+    ...                ]:
+    ...         m = __import__(pkg)
+    ...         a = m.array(ary)
+    ...         a2 = saveload(a)
+    ...         assert (numarray.all(a == a2) and type(a) == type(a2) and
+    ...                 a.typecode() == a2.typecode())
 
 """
 
