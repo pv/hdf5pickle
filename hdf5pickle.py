@@ -15,6 +15,10 @@ BOOL    = 'BB'
 REF     = 'RR'
 COMPLEX = 'CC'
 
+NUMARRAY = 'NA'
+NUMPY    = 'NP'
+NUMERIC  = 'NU'
+
 HIGHEST_PROTOCOL = 2
 
 def _DEBUG(*args):
@@ -29,6 +33,22 @@ try:
     UnicodeType
 except NameError:
     UnicodeType = None
+
+try:
+    from numarray import ArrayType as NumarrayArrayType
+except ImportError:
+    NumarrayArrayType = None
+
+try:
+    from Numeric import ArrayType as NumericArrayType
+except ImportError:
+    NumericArrayType = None
+
+try:
+    from numpy import ArrayType as NumpyArrayType
+except ImportError:
+    NumpyArrayType = None
+
 
 def _splitpath(s):
     i = s.rindex('/')
@@ -79,15 +99,26 @@ class Pickler(object):
         except LookupError:
             return False
 
-    def _save_array(self, path, data):
+    def _save_array(self, path, data, type_):
         where, name = _splitpath(path)
-        if ((not hasattr(data, 'shape') or data.shape != ()) and
-                hasattr(data, '__len__') and len(data) == 0):
-            array = self.file.createArray(where, name, 0)
-            _setattr(array, 'empty', 1)
-            return array
-        else:
+
+        if type_ in (tuple, list, str):
+            if len(data) == 0:
+                array = self.file.createArray(where, name, [0])
+                _setattr(array, 'empty', 1)
+                return array
+            elif type_ in (tuple, list):
+                btype = type(data[0])
+                if not btype in (int, float, complex):
+                    raise TypeError
+                for item in data:
+                    if type(item) != btype:
+                        raise TypeError
+            return self.file.createArray(where, name, numarray.array(data))
+        elif type_ in (int, float, complex):
             return self.file.createArray(where, name, data)
+        else:
+            raise TypeError
 
     def _new_group(self, path):
         where, name = _splitpath(path)
@@ -238,7 +269,7 @@ class Pickler(object):
             self.save('%s/__/func' % path, func)
             self.save('%s/__/args' % path, args)
 
-        if obj:
+        if obj is not None:
             self._keep_alive(obj)
 
         if listitems is not None:
@@ -248,6 +279,7 @@ class Pickler(object):
             self.save('%s/__/dictitems' % path, dict(dictitems))
 
         if state is not None:
+            _setattr(group, 'has_reduce_content', 1)
             if isinstance(state, dict):
                 self._save_dict(path, state)
                 self._keep_alive(state)
@@ -255,56 +287,48 @@ class Pickler(object):
                 self.save('%s/__/content' % path, state)
 
     def save_none(self, path, obj):
-        array = self._save_array(path, 0)
+        array = self._save_array(path, 0, int)
         _setattr(array, 'pickletype', NONE)
     dispatch[NoneType] = save_none
 
     def save_bool(self, path, obj):
-        array = self._save_array(path, obj)
+        array = self._save_array(path, obj, int)
         _setattr(array, 'pickletype', BOOL)
     dispatch[bool] = save_bool
 
     def save_int(self, path, obj):
-        array = self._save_array(path, obj)
+        array = self._save_array(path, obj, int)
         _setattr(array, 'pickletype', INT)
     dispatch[IntType] = save_int
 
     def save_long(self, path, obj):
-        array = self._save_array(path, str(encode_long(obj)))
+        array = self._save_array(path, str(encode_long(obj)), str)
         _setattr(array, 'pickletype', LONG)
     dispatch[LongType] = save_long
 
     def save_float(self, path, obj):
-        array = self._save_array(path, obj)
+        array = self._save_array(path, obj, float)
         _setattr(array, 'pickletype', FLOAT)
     dispatch[FloatType] = save_float
 
     def save_complex(self, path, obj):
-        array = self._save_array(path, numarray.array(obj))
+        array = self._save_array(path, numarray.array(obj), complex)
         _setattr(array, 'pickletype', COMPLEX)
     dispatch[ComplexType] = save_complex
 
     def save_string(self, path, obj):
-        node = self._save_array(path, obj)
+        node = self._save_array(path, numarray.array(obj), str)
         _setattr(node, 'pickletype', STRING)
     dispatch[StringType] = save_string
 
     def save_unicode(self, path, obj):
-        node = self._save_array(path, unicode(obj).encode('utf-8'))
+        node = self._save_array(path, unicode(obj).encode('utf-8'), str)
         _setattr(node, 'pickletype', UNICODE)
     dispatch[UnicodeType] = save_unicode
 
     def save_tuple(self, path, obj):
         try:
-            if len(obj) == 0: raise TypeError()
-
-            t = type(obj[0])
-            if not t in (str, int, float, complex):
-                raise TypeError()
-            for i in obj:
-                if type(i) != t: raise TypeError()
-            
-            array = self._save_array(path, obj)
+            array = self._save_array(path, obj, type(obj))
             _setattr(array, 'pickletype', TUPLE)
             return array
         except TypeError:
@@ -421,7 +445,7 @@ class Pickler(object):
             stuff = module + '\n' + name
             pickletype = GLOBAL
 
-        array = self._save_array(path, str(stuff))
+        array = self._save_array(path, str(stuff), str)
         _setattr(array, 'pickletype', pickletype)
     
     dispatch[ClassType] = save_global
@@ -429,6 +453,26 @@ class Pickler(object):
     dispatch[BuiltinFunctionType] = save_global
     dispatch[TypeType] = save_global
 
+    def save_numeric_array(self, path, obj):
+        where, name = _splitpath(path)
+        array = self.file.createArray(where, name, obj)
+        _setattr(array, 'pickletype', NUMERIC)
+        return array
+    dispatch[NumericArrayType] = save_numeric_array
+
+    def save_numpy_array(self, path, obj):
+        where, name = _splitpath(path)
+        array = self.file.createArray(where, name, obj)
+        _setattr(array, 'pickletype', NUMPY)
+        return array
+    dispatch[NumpyArrayType] = save_numpy_array
+
+    def save_numarray_array(self, path, obj):
+        where, name = _splitpath(path)
+        array = self.file.createArray(where, name, obj)
+        _setattr(array, 'pickletype', NUMARRAY)
+        return array
+    dispatch[NumarrayArrayType] = save_numarray_array
 
 
 class Unpickler:
@@ -438,7 +482,10 @@ class Unpickler:
         self.paths = {}
 
     def _get_path(self, path):
-        return self.file.getNode(path)
+        x = self.file.getNode(path)
+        if isinstance(x, tables.Array):
+            x.flavor = "NumArray"
+        return x
 
     def _has_path(self, path):
         try:
@@ -448,10 +495,17 @@ class Unpickler:
             return False
 
     def _load_array(self, node, type_):
-        if _hasattr(node, 'empty'):
-            return type_()
+        if type_ in (tuple, list, str):
+            if _hasattr(node, 'empty'):
+                return type_()
+            elif type_ is str:
+                return node[...].tostring()
+            else:
+                return type_(node[...])
+        elif type_ in (int, float, complex, bool):
+            return type_(node[...])
         else:
-            return type_(node.read())
+            raise TypeError()
 
     def load(self, path):
         if not path in self.memo:
@@ -504,7 +558,7 @@ class Unpickler:
             state = self.load('%s/__/content' % path)
             if state is not None:
                 self._setstate(obj, state)
-        else:
+        elif _hasattr(node, 'has_reduce_content'):
             state = {}
             state = self._load_dict(node, state)
             self._setstate(obj, state)
@@ -549,7 +603,7 @@ class Unpickler:
 
     def _load_list(self, node):
         if isinstance(node, tables.Array):
-            return node.read()
+            return self._load_array(node, list)
 
         items = []
         self.memo[node._v_pathname] = items # avoid infinite loop
@@ -690,6 +744,21 @@ class Unpickler:
         code = marshal.loads('i' + data)
         return self.get_extension(code)
     dispatch[EXT4] = load_ext
+
+    def load_numeric_array(self, node):
+        import Numeric
+        return Numeric.asarray(node[...])
+    dispatch[NUMERIC] = load_numeric_array
+
+    def load_numpy_array(self, node):
+        import numpy
+        return numpy.asarray(node[...])
+    dispatch[NUMPY] = load_numpy_array
+
+    def load_numarray_array(self, node):
+        import numarray
+        return numarray.asarray(node[...])
+    dispatch[NUMARRAY] = load_numarray_array
 
     def get_extension(self, code):
         nil = []
