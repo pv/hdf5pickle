@@ -185,8 +185,9 @@ class FileInterface(object):
         except LookupError:
             return False
 
-    def save_array(self, path, data, type_):
+    def save_array(self, path, data):
         where, name = self._splitpath(path)
+        type_ = type(data)
 
         if type_ in (tuple, list, str):
             if len(data) == 0:
@@ -200,8 +201,13 @@ class FileInterface(object):
                 for item in data:
                     if type(item) != btype:
                         raise TypeError
+            if type_ is str:
+                return self.file.createArray(where, name, numarray.array(
+                    map(ord, data), type=numarray.UInt8))
             return self.file.createArray(where, name, numarray.array(data))
-        elif type_ in (int, float, complex):
+        elif type_ is complex:
+            return self.file.createArray(where, name, numarray.array(data))
+        elif type_ in (int, float):
             return self.file.createArray(where, name, data)
         else:
             raise TypeError
@@ -214,12 +220,16 @@ class FileInterface(object):
         if type_ in (tuple, list, str):
             if self.has_attr(node, 'empty'):
                 return type_()
-            elif type_ is str:
-                return node[...].tostring()
             else:
-                return type_(node[...])
-        elif type_ in (int, float, complex, bool):
-            return type_(node[...])
+                if type_ is str:
+                    return ''.join(map(chr, node.read()))
+                return type_(node.read())
+        elif type_ in (int, float, bool):
+            return type_(node.read())
+        elif type_ is complex:
+            data = node.read()
+            data.ravel()
+            return complex(data[0])
         else:
             raise TypeError()
 
@@ -400,48 +410,48 @@ class Pickler(object):
                 self.save('%s/__/content' % path, state)
 
     def save_none(self, path, obj):
-        array = self.file.save_array(path, 0, int)
+        array = self.file.save_array(path, 0)
         self.file.set_attr(array, 'pickletype', NONE)
     dispatch[NoneType] = save_none
 
     def save_bool(self, path, obj):
-        array = self.file.save_array(path, obj, int)
+        array = self.file.save_array(path, int(obj))
         self.file.set_attr(array, 'pickletype', BOOL)
     dispatch[bool] = save_bool
 
     def save_int(self, path, obj):
-        array = self.file.save_array(path, obj, int)
+        array = self.file.save_array(path, obj)
         self.file.set_attr(array, 'pickletype', INT)
     dispatch[IntType] = save_int
 
     def save_long(self, path, obj):
-        array = self.file.save_array(path, str(encode_long(obj)), str)
+        array = self.file.save_array(path, str(encode_long(obj)))
         self.file.set_attr(array, 'pickletype', LONG)
     dispatch[LongType] = save_long
 
     def save_float(self, path, obj):
-        array = self.file.save_array(path, obj, float)
+        array = self.file.save_array(path, obj)
         self.file.set_attr(array, 'pickletype', FLOAT)
     dispatch[FloatType] = save_float
 
     def save_complex(self, path, obj):
-        array = self.file.save_array(path, numarray.array(obj), complex)
+        array = self.file.save_array(path, obj)
         self.file.set_attr(array, 'pickletype', COMPLEX)
     dispatch[ComplexType] = save_complex
 
     def save_string(self, path, obj):
-        node = self.file.save_array(path, numarray.array(obj), str)
+        node = self.file.save_array(path, obj)
         self.file.set_attr(node, 'pickletype', STRING)
     dispatch[StringType] = save_string
 
     def save_unicode(self, path, obj):
-        node = self.file.save_array(path, unicode(obj).encode('utf-8'), str)
+        node = self.file.save_array(path, obj.encode('utf-8'))
         self.file.set_attr(node, 'pickletype', UNICODE)
     dispatch[UnicodeType] = save_unicode
 
     def save_tuple(self, path, obj):
         try:
-            array = self.file.save_array(path, obj, type(obj))
+            array = self.file.save_array(path, obj)
             self.file.set_attr(array, 'pickletype', TUPLE)
             return array
         except TypeError:
@@ -558,7 +568,7 @@ class Pickler(object):
             stuff = module + '\n' + name
             pickletype = GLOBAL
 
-        array = self.file.save_array(path, str(stuff), str)
+        array = self.file.save_array(path, str(stuff))
         self.file.set_attr(array, 'pickletype', pickletype)
     
     dispatch[ClassType] = save_global
@@ -671,9 +681,7 @@ class Unpickler(object):
     dispatch[FLOAT] = load_float
 
     def load_complex(self, node):
-        data = node.read()
-        data.ravel()
-        return complex(data[0])
+        return self.file.load_array(node, complex)
     dispatch[COMPLEX] = load_complex
 
     def load_string(self, node):
@@ -831,17 +839,17 @@ class Unpickler(object):
 
     def load_numeric_array(self, node):
         import Numeric
-        return Numeric.asarray(node[...])
+        return Numeric.asarray(node.read())
     dispatch[NUMERIC] = load_numeric_array
 
     def load_numpy_array(self, node):
         import numpy
-        return numpy.asarray(node[...])
+        return numpy.asarray(node.read())
     dispatch[NUMPY] = load_numpy_array
 
     def load_numarray_array(self, node):
         import numarray
-        return numarray.asarray(node[...])
+        return numarray.asarray(node.read())
     dispatch[NUMARRAY] = load_numarray_array
 
     def get_extension(self, code):
