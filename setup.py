@@ -1,6 +1,11 @@
+# use setuptools or distutils
+# ---------------------------
+
+import os
+extra_args={'cmdclass': {}}
+
 try:
-    from setuptools import setup, find_packages
-    extra_args={}
+    from setuptools import setup, find_packages, Command
 except ImportError:
     print "WARNING: setuptools not available, falling back to distutils!"
     from distutils.core import setup, Command
@@ -14,7 +19,29 @@ except ImportError:
             sys.argv = [sys.argv[0]]
             unittest.TextTestRunner(verbosity=2).run(test.test.suite())
             raise SystemExit(0)
-    extra_args={'cmdclass': {'test': xtest}}
+    extra_args['cmdclass']['test'] = xtest
+
+
+# docs
+# ----
+
+class doc(Command):
+    description = "generate documentation"
+    user_options = []
+
+    def initialize_options(self): pass
+    def finalize_options(self): pass
+    def run(self):
+        try: os.makedirs('doc')
+        except OSError: pass
+        modname = 'hdf5pickle'
+        os.system("epydoc -v --no-frames -o doc %s" % modname)
+
+extra_args['cmdclass']['doc'] = doc
+
+
+# setup
+# -----
 
 setup(
     name = "hdf5pickle",
