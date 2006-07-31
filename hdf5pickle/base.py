@@ -71,8 +71,12 @@ class _FileInterface(object):
 
     Includes convenience functions, including type conversion.
     """
-    def __init__(self, file):
+    def __init__(self, file, type_map=None):
         self.file = file
+        if type_map == None:
+            self.type_map = {}
+        else:
+            self.type_map = type_map
     
     def  _splitpath(s):
         i = s.rindex('/')
@@ -116,7 +120,8 @@ class _FileInterface(object):
 
         if type_ in (tuple, list, str):
             if len(data) == 0:
-                array = self.file.createArray(where, name, [0])
+                array = self.file.createArray(
+                    where, name, numarray.array([0], type=numarray.Int8))
                 self.set_attr(array, 'empty', 1)
                 return array
             elif type_ in (tuple, list):
@@ -128,12 +133,13 @@ class _FileInterface(object):
                         raise TypeError
             if type_ is str:
                 return self.file.createArray(where, name, numarray.array(
-                    map(ord, data), type=numarray.UInt8))
-            return self.file.createArray(where, name, numarray.array(data))
-        elif type_ is complex:
-            return self.file.createArray(where, name, numarray.array(data))
-        elif type_ in (int, float):
-            return self.file.createArray(where, name, data)
+                    map(ord, data), type=self.type_map.get(str,
+                                                           numarray.UInt8)))
+            return self.file.createArray(where, name, numarray.array(
+                data, type=self.type_map.get(btype)))
+        elif type_ in (int, float, complex):
+            return self.file.createArray(where, name, numarray.array(
+                data, type=self.type_map.get(type_)))
         else:
             raise TypeError
 
@@ -149,8 +155,10 @@ class _FileInterface(object):
                 if type_ is str:
                     return ''.join(map(chr, node.read()))
                 return type_(node.read())
-        elif type_ in (int, float, bool):
+        elif type_ in (int, float):
             return type_(node.read())
+        elif type_ is bool:
+            return type_(numarray.alltrue(node.read()))
         elif type_ is complex:
             data = node.read()
             data.ravel()
@@ -178,8 +186,8 @@ class Pickler(object):
     objects to preserve references. It should be safe to call the `dump`
     method multiple times, for different paths.
     """
-    def __init__(self, file):
-        self.file = _FileInterface(file)
+    def __init__(self, file, type_map=None):
+        self.file = _FileInterface(file, type_map)
         
         self.paths = {}
         self.memo = {}
@@ -548,8 +556,8 @@ class Unpickler(object):
     objects to preserve references. It should be safe to call the `load`
     method multiple times, for different paths.
     """
-    def __init__(self, file, protocol=None):
-        self.file = _FileInterface(file)
+    def __init__(self, file, type_map=None):
+        self.file = _FileInterface(file, type_map=None)
         self.memo = {}
 
     def clear_memo(self):
@@ -866,7 +874,7 @@ def _check_pytables_name(key):
 #############################################################################
 
 
-def dump(obj, file, path):
+def dump(obj, file, path, type_map=None):
     """
     Dump a Python object to an open PyTables HDF5 file.
 
@@ -874,8 +882,11 @@ def dump(obj, file, path):
     :param file: where to dump
     :type  file: tables.File
     :param path: path where to dump in the file
+    :param type_map:
+        mapping of Python basic types (str, int, ...) to numarray types.
+        If ``None``, numarray's default mapping is used.
     """
-    Pickler(file).dump(path, obj)
+    Pickler(file, type_map=type_map).dump(path, obj)
 
 def load(file, path):
     """
@@ -889,7 +900,7 @@ def load(file, path):
     """
     return Unpickler(file).load(path)
 
-def dump_many(file, desc):
+def dump_many(file, desc, type_map=None):
     """
     Dump multiple Python objects to an open PyTables HDF5 file,
     preserving any references between the objects.
@@ -900,8 +911,11 @@ def dump_many(file, desc):
     :param file: where to dump
     :type  file: tables.File
     :param desc: a list of (path, obj)
+    :param type_map:
+        mapping of Python basic types (str, int, ...) to numarray types.
+        If ``None``, numarray's default mapping is used.
     """
-    p = Pickler(file)
+    p = Pickler(file, type_map=type_map)
     for path, obj in desc:
         p.dump(path, obj)
 

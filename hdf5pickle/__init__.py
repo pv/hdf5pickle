@@ -61,9 +61,10 @@ depending on the type of the Python object.
         .pickletype         = PICKLE_TYPE
 
 * Basic stream types (``long``, ``str``, ``unicode``).
-  Longs and unicodes are converted to strings (`pickle.encode_long` or as utf-8), and strings are converted to arrays of unsigned 8-bit integers:: 
+  Longs and unicodes are converted to strings (`pickle.encode_long`, utf-8),
+  and strings are converted to arrays of unsigned 8-bit integers:: 
 
-    array [(n,), int8] = DATA
+    array [(n,), uint8] = DATA
         .pickletype    = LONG/STR/UNICODE
         .empty     = 1 #if len(DATA) == 0
     
