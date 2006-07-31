@@ -129,21 +129,30 @@ try:
 except NameError:
     UnicodeType = None
 
-try:
-    from numarray import ArrayType as NumarrayArrayType
-except ImportError:
-    NumarrayArrayType = None
+### Check what PyTables supports on this system
 
+NumericArrayType = None
 try:
+    tables.checkflavor('Numeric', 'f')
     from Numeric import ArrayType as NumericArrayType
-except ImportError:
-    NumericArrayType = None
+except ImportError: pass
+except ValueError: pass
 
+NumarrayArrayType = None
 try:
-    from numpy import ArrayType as NumpyArrayType
-except ImportError:
-    NumpyArrayType = None
+    tables.checkflavor('NumArray', 'f')
+    from numarray import ArrayType as NumarrayArrayType
+except ImportError: pass
+except ValueError: pass
 
+NumpyArrayType = None
+try:
+    tables.checkflavor('Numpy', 'f')
+    from numpy import ArrayType as NumpyArrayType
+except ImportError: pass
+except ValueError: pass
+
+### Carry on
 
 class FileInterface(object):
     def __init__(self, file):
