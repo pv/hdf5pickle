@@ -65,7 +65,7 @@ except ValueError: pass
 #############################################################################
 
 
-class FileInterface(object):
+class _FileInterface(object):
     """
     Internal interface to a `tables.File` object.
 
@@ -179,7 +179,7 @@ class Pickler(object):
     method multiple times, for different paths.
     """
     def __init__(self, file):
-        self.file = FileInterface(file)
+        self.file = _FileInterface(file)
         
         self.paths = {}
         self.memo = {}
@@ -194,12 +194,12 @@ class Pickler(object):
         self.memo = {}
 
     def dump(self, path, obj):
-        self.save(path, obj)
+        self._save(path, obj)
 
-    def save(self, path, obj):
+    def _save(self, path, obj):
         x = self.paths.get(id(obj))
         if x:
-            self.save_ref(path, x)
+            self._save_ref(path, x)
             return
         else:
             self.paths[id(obj)] = path
@@ -208,7 +208,7 @@ class Pickler(object):
 
         # Check if we have a dispatch for it
         t = type(obj)
-        f = self.dispatch.get(t)
+        f = self._dispatch.get(t)
         if f:
             x = f(self, path, obj)
             return
@@ -219,7 +219,7 @@ class Pickler(object):
         except TypeError: # t is not a class (old Boost; see SF #502085)
             issc = 0
         if issc:
-            self.save_global(path, obj)
+            self._save_global(path, obj)
             return
 
         # Check copy_reg.dispatch_table
@@ -241,7 +241,7 @@ class Pickler(object):
 
         # Check for string returned by reduce(), meaning "save as global"
         if type(rv) is StringType:
-            self.save_global(path, obj, rv)
+            self._save_global(path, obj, rv)
             return
 
         # Assert that reduce() returned a tuple
@@ -255,16 +255,16 @@ class Pickler(object):
                                 "two to five elements" % reduce)
 
         # Save the reduce() output and finally memoize the object
-        self.save_reduce(path, obj=obj, *rv)
+        self._save_reduce(path, obj=obj, *rv)
 
-    dispatch = {}
+    _dispatch = {}
 
-    def save_ref(self, path, objpath):
+    def _save_ref(self, path, objpath):
         group = self.file.new_group(path)
         self.file.set_attr(group, 'target', objpath)
         self.file.set_attr(group, 'pickletype', REF)
 
-    def save_reduce(self, path, func, args, state=None,
+    def _save_reduce(self, path, func, args, state=None,
                     listitems=None, dictitems=None, obj=None):
         # This API is called by some subclasses
 
@@ -325,70 +325,70 @@ class Pickler(object):
                     "args[0] from __newobj__ args has the wrong class")
             args = args[1:]
 
-            self.save('%s/__/cls' % path, cls)
-            self.save('%s/__/args' % path, args)
+            self._save('%s/__/cls' % path, cls)
+            self._save('%s/__/args' % path, args)
         else:
-            self.save('%s/__/func' % path, func)
-            self.save('%s/__/args' % path, args)
+            self._save('%s/__/func' % path, func)
+            self._save('%s/__/args' % path, args)
 
         if obj is not None:
             self._keep_alive(obj)
 
         if listitems is not None:
-            self.save('%s/__/listitems' % path, list(listitems))
+            self._save('%s/__/listitems' % path, list(listitems))
 
         if dictitems is not None:
-            self.save('%s/__/dictitems' % path, dict(dictitems))
+            self._save('%s/__/dictitems' % path, dict(dictitems))
 
         if state is not None:
             self.file.set_attr(group, 'has_reduce_content', 1)
             if isinstance(state, dict):
-                self._save_dict(path, state)
+                self._save_dict_content(path, state)
                 self._keep_alive(state)
             else:
-                self.save('%s/__/content' % path, state)
+                self._save('%s/__/content' % path, state)
 
-    def save_none(self, path, obj):
+    def _save_none(self, path, obj):
         array = self.file.save_array(path, 0)
         self.file.set_attr(array, 'pickletype', NONE)
-    dispatch[NoneType] = save_none
+    _dispatch[NoneType] = _save_none
 
-    def save_bool(self, path, obj):
+    def _save_bool(self, path, obj):
         array = self.file.save_array(path, int(obj))
         self.file.set_attr(array, 'pickletype', BOOL)
-    dispatch[bool] = save_bool
+    _dispatch[bool] = _save_bool
 
-    def save_int(self, path, obj):
+    def _save_int(self, path, obj):
         array = self.file.save_array(path, obj)
         self.file.set_attr(array, 'pickletype', INT)
-    dispatch[IntType] = save_int
+    _dispatch[IntType] = _save_int
 
-    def save_long(self, path, obj):
+    def _save_long(self, path, obj):
         array = self.file.save_array(path, str(encode_long(obj)))
         self.file.set_attr(array, 'pickletype', LONG)
-    dispatch[LongType] = save_long
+    _dispatch[LongType] = _save_long
 
-    def save_float(self, path, obj):
+    def _save_float(self, path, obj):
         array = self.file.save_array(path, obj)
         self.file.set_attr(array, 'pickletype', FLOAT)
-    dispatch[FloatType] = save_float
+    _dispatch[FloatType] = _save_float
 
-    def save_complex(self, path, obj):
+    def _save_complex(self, path, obj):
         array = self.file.save_array(path, obj)
         self.file.set_attr(array, 'pickletype', COMPLEX)
-    dispatch[ComplexType] = save_complex
+    _dispatch[ComplexType] = _save_complex
 
-    def save_string(self, path, obj):
+    def _save_string(self, path, obj):
         node = self.file.save_array(path, obj)
         self.file.set_attr(node, 'pickletype', STRING)
-    dispatch[StringType] = save_string
+    _dispatch[StringType] = _save_string
 
-    def save_unicode(self, path, obj):
+    def _save_unicode(self, path, obj):
         node = self.file.save_array(path, obj.encode('utf-8'))
         self.file.set_attr(node, 'pickletype', UNICODE)
-    dispatch[UnicodeType] = save_unicode
+    _dispatch[UnicodeType] = _save_unicode
 
-    def save_tuple(self, path, obj):
+    def _save_tuple(self, path, obj):
         try:
             array = self.file.save_array(path, obj)
             self.file.set_attr(array, 'pickletype', TUPLE)
@@ -399,27 +399,26 @@ class Pickler(object):
         group = self.file.new_group(path)
         self.file.set_attr(group, 'pickletype', TUPLE)
         for i, item in enumerate(obj):
-            self.save('%s/_%d' % (path, i), item)
+            self._save('%s/_%d' % (path, i), item)
         return group
-    dispatch[TupleType] = save_tuple
+    _dispatch[TupleType] = _save_tuple
 
-    def save_list(self, path, obj):
-        item = self.save_tuple(path, obj)
+    def _save_list(self, path, obj):
+        item = self._save_tuple(path, obj)
         self.file.set_attr(item, 'pickletype', LIST)
-    dispatch[ListType] = save_list
-
-    ok_dict_key_re = re.compile('^[a-zA-Z_][a-zA-Z0-9_]*$')
-    def save_dict(self, path, obj):
-        group = self.file.new_group(path)
-        self.file.set_attr(group, 'pickletype', DICT)
-        self._save_dict(path, obj)
+    _dispatch[ListType] = _save_list
 
     def _save_dict(self, path, obj):
+        group = self.file.new_group(path)
+        self.file.set_attr(group, 'pickletype', DICT)
+        self._save_dict_content(path, obj)
+
+    def _save_dict_content(self, path, obj):
         strkeys = {}
         seen = {}
         keyi = 0
         for key in obj.iterkeys():
-            if (isinstance(key, str) and check_pytables_name(key)
+            if (isinstance(key, str) and _check_pytables_name(key)
                     and key != "__"):
                 strkeys[key] = key
                 seen[key] = True
@@ -432,18 +431,18 @@ class Pickler(object):
         hassub = self.file.has_path('%s/__' % path)
 
         for key, value in obj.iteritems():
-            self.save('/'.join([path, strkeys[key]]), value)
+            self._save('/'.join([path, strkeys[key]]), value)
             if not strkeys[key] is key:
                 if not hassub:
                     self.file.new_group('%s/__' % path)
                     hassub = True
-                self.save('%s/__/%s' % (path, strkeys[key]), key)
+                self._save('%s/__/%s' % (path, strkeys[key]), key)
 
-    dispatch[DictionaryType] = save_dict
+    _dispatch[DictionaryType] = _save_dict
     if not PyStringMap is None:
-        dispatch[PyStringMap] = save_dict
+        _dispatch[PyStringMap] = _save_dict
     
-    def save_inst(self, path, obj):
+    def _save_inst(self, path, obj):
         cls = obj.__class__
 
         if hasattr(obj, '__getinitargs__'):
@@ -463,17 +462,17 @@ class Pickler(object):
         self.file.set_attr(group, 'pickletype', INST)
 
         self.file.new_group("%s/__" % path)
-        self.save('%s/__/cls' % path, cls)
-        self.save('%s/__/args' % path, args)
+        self._save('%s/__/cls' % path, cls)
+        self._save('%s/__/args' % path, args)
 
         if isinstance(stuff, dict):
-            self._save_dict(path, stuff)
+            self._save_dict_content(path, stuff)
             self._keep_alive(stuff)
         else:
-            self.save('%s/__/content' % path, stuff)
-    dispatch[InstanceType] = save_inst
+            self._save('%s/__/content' % path, stuff)
+    _dispatch[InstanceType] = _save_inst
 
-    def save_global(self, path, obj, name=None, pack=struct.pack):
+    def _save_global(self, path, obj, name=None, pack=struct.pack):
         if name is None:
             name = obj.__name__
 
@@ -510,28 +509,28 @@ class Pickler(object):
         array = self.file.save_array(path, str(stuff))
         self.file.set_attr(array, 'pickletype', pickletype)
     
-    dispatch[ClassType] = save_global
-    dispatch[FunctionType] = save_global
-    dispatch[BuiltinFunctionType] = save_global
-    dispatch[TypeType] = save_global
+    _dispatch[ClassType] = _save_global
+    _dispatch[FunctionType] = _save_global
+    _dispatch[BuiltinFunctionType] = _save_global
+    _dispatch[TypeType] = _save_global
 
-    def save_numeric_array(self, path, obj):
+    def _save_numeric_array(self, path, obj):
         array = self.file.save_numeric_array(path, obj)
         self.file.set_attr(array, 'pickletype', NUMERIC)
         return array
-    dispatch[NumericArrayType] = save_numeric_array
+    _dispatch[NumericArrayType] = _save_numeric_array
 
-    def save_numpy_array(self, path, obj):
+    def _save_numpy_array(self, path, obj):
         array = self.file.save_numeric_array(path, obj)
         self.file.set_attr(array, 'pickletype', NUMPY)
         return array
-    dispatch[NumpyArrayType] = save_numpy_array
+    _dispatch[NumpyArrayType] = _save_numpy_array
 
-    def save_numarray_array(self, path, obj):
+    def _save_numarray_array(self, path, obj):
         array = self.file.save_numeric_array(path, obj)
         self.file.set_attr(array, 'pickletype', NUMARRAY)
         return array
-    dispatch[NumarrayArrayType] = save_numarray_array
+    _dispatch[NumarrayArrayType] = _save_numarray_array
 
 
 #############################################################################
@@ -550,7 +549,7 @@ class Unpickler(object):
     method multiple times, for different paths.
     """
     def __init__(self, file, protocol=None):
-        self.file = FileInterface(file)
+        self.file = _FileInterface(file)
         self.memo = {}
 
     def clear_memo(self):
@@ -561,21 +560,21 @@ class Unpickler(object):
             node = self.file.get_path(path)
             key = self.file.get_attr(node, 'pickletype')
             if key:
-                f = self.dispatch[key]
+                f = self._dispatch[key]
                 obj = f(self, node)
             else:
                 obj = node.read()
             self.memo[path] = obj
         return self.memo[path]
 
-    dispatch = {}
+    _dispatch = {}
 
-    def load_ref(self, node):
+    def _load_ref(self, node):
         path = self.file.get_attr(node, 'target')
         return self.load(path)
-    dispatch[REF] = load_ref
+    _dispatch[REF] = _load_ref
 
-    def load_reduce(self, node):
+    def _load_reduce(self, node):
         path = node._v_pathname
         args = self.load('%s/__/args' % path)
 
@@ -609,46 +608,46 @@ class Unpickler(object):
                 self._setstate(obj, state)
         elif self.file.has_attr(node, 'has_reduce_content'):
             state = {}
-            state = self._load_dict(node, state)
+            state = self._load_dict_content(node, state)
             self._setstate(obj, state)
         return obj
-    dispatch[REDUCE] = load_reduce
+    _dispatch[REDUCE] = _load_reduce
 
-    def load_none(self, node):
+    def _load_none(self, node):
         return None
-    dispatch[NONE] = load_none
+    _dispatch[NONE] = _load_none
 
-    def load_bool(self, node):
+    def _load_bool(self, node):
         return self.file.load_array(node, bool)
-    dispatch[BOOL] = load_bool
+    _dispatch[BOOL] = _load_bool
 
-    def load_int(self, node):
+    def _load_int(self, node):
         return self.file.load_array(node, int)
-    dispatch[INT] = load_int
+    _dispatch[INT] = _load_int
 
-    def load_long(self, node):
+    def _load_long(self, node):
         data = self.file.load_array(node, str)
         return decode_long(data)
-    dispatch[LONG] = load_long
+    _dispatch[LONG] = _load_long
 
-    def load_float(self, node):
+    def _load_float(self, node):
         return self.file.load_array(node, float)
-    dispatch[FLOAT] = load_float
+    _dispatch[FLOAT] = _load_float
 
-    def load_complex(self, node):
+    def _load_complex(self, node):
         return self.file.load_array(node, complex)
-    dispatch[COMPLEX] = load_complex
+    _dispatch[COMPLEX] = _load_complex
 
-    def load_string(self, node):
+    def _load_string(self, node):
         return self.file.load_array(node, str)
-    dispatch[STRING] = load_string
+    _dispatch[STRING] = _load_string
 
-    def load_unicode(self, node):
+    def _load_unicode(self, node):
         data = self.file.load_array(node, str)
         return data.decode('utf-8')
-    dispatch[UNICODE] = load_unicode
+    _dispatch[UNICODE] = _load_unicode
 
-    def _load_list(self, node):
+    def _load_list_content(self, node):
         if isinstance(node, tables.Array):
             return self.file.load_array(node, list)
 
@@ -669,21 +668,21 @@ class Unpickler(object):
         
         return items
     
-    def load_tuple(self, node):
-        return tuple(self._load_list(node))
-    dispatch[TUPLE] = load_tuple
+    def _load_tuple(self, node):
+        return tuple(self._load_list_content(node))
+    _dispatch[TUPLE] = _load_tuple
 
-    def load_list(self, node):
-        return self._load_list(node)
-    dispatch[LIST] = load_list
+    def _load_list(self, node):
+        return self._load_list_content(node)
+    _dispatch[LIST] = _load_list
 
-    def load_dict(self, node):
+    def _load_dict(self, node):
         path = node._v_pathname
         data = {}
         self.memo[path] = data
-        return self._load_dict(node, data)
+        return self._load_dict_content(node, data)
 
-    def _load_dict(self, node, data):
+    def _load_dict_content(self, node, data):
         path = node._v_pathname
         strkeys = {}
 
@@ -704,7 +703,7 @@ class Unpickler(object):
             data[realkey] = self.load('%s/%s' % (path, key))
 
         return data
-    dispatch[DICT] = load_dict
+    _dispatch[DICT] = _load_dict
 
     # INST and OBJ differ only in how they get a class object.  It's not
     # only sensible to do the rest in a common routine, the two routines
@@ -731,7 +730,7 @@ class Unpickler(object):
                     klass.__name__, str(err)), sys.exc_info()[2]
         return value
 
-    def load_inst(self, node):
+    def _load_inst(self, node):
         path = node._v_pathname
 
         cls = self.load('%s/__/cls' % path)
@@ -745,11 +744,11 @@ class Unpickler(object):
             state = self.load('%s/__/content' % path)
         else:
             state = {}
-            state = self._load_dict(node, state)
+            state = self._load_dict_content(node, state)
         self._setstate(inst, state)
 
         return inst
-    dispatch[INST] = load_inst
+    _dispatch[INST] = _load_inst
 
     def _setstate(self, inst, state):
         setstate = getattr(inst, "__setstate__", None)
@@ -780,34 +779,34 @@ class Unpickler(object):
             for k, v in slotstate.items():
                 setattr(inst, k, v)
 
-    def load_global(self, node):
+    def _load_global(self, node):
         data = self.file.load_array(node, str)
         module, name = data.split('\n')
-        return self.find_class(module, name)
-    dispatch[GLOBAL] = load_global
+        return self._find_class(module, name)
+    _dispatch[GLOBAL] = _load_global
 
-    def load_ext(self, node):
+    def _load_ext(self, node):
         data = self.file.load_array(node, str)
         code = marshal.loads('i' + data)
-        return self.get_extension(code)
-    dispatch[EXT4] = load_ext
+        return self._get_extension(code)
+    _dispatch[EXT4] = _load_ext
 
-    def load_numeric_array(self, node):
+    def _load_numeric_array(self, node):
         import Numeric
         return Numeric.asarray(node.read())
-    dispatch[NUMERIC] = load_numeric_array
+    _dispatch[NUMERIC] = _load_numeric_array
 
-    def load_numpy_array(self, node):
+    def _load_numpy_array(self, node):
         import numpy
         return numpy.asarray(node.read())
-    dispatch[NUMPY] = load_numpy_array
+    _dispatch[NUMPY] = _load_numpy_array
 
-    def load_numarray_array(self, node):
+    def _load_numarray_array(self, node):
         import numarray
         return numarray.asarray(node.read())
-    dispatch[NUMARRAY] = load_numarray_array
+    _dispatch[NUMARRAY] = _load_numarray_array
 
-    def get_extension(self, code):
+    def _get_extension(self, code):
         nil = []
         obj = _extension_cache.get(code, nil)
         if obj is not nil:
@@ -816,11 +815,11 @@ class Unpickler(object):
         key = _inverted_registry.get(code)
         if not key:
             raise ValueError("unregistered extension code %d" % code)
-        obj = self.find_class(*key)
+        obj = self._find_class(*key)
         _extension_cache[code] = obj
         return obj
 
-    def find_class(self, module, name):
+    def _find_class(self, module, name):
         # Subclasses may override this
         __import__(module)
         mod = sys.modules[module]
@@ -836,7 +835,7 @@ class _EmptyClass:
 
 pythonIdRE = re.compile('^[a-zA-Z_][a-zA-Z0-9_]*$')
 reservedIdRE = re.compile('^_[cfgv]_')
-def checkNameValidity(name):
+def _checkNameValidity(name):
     """
     Check the validity of the `name` of a PyTables object,
     so that PyTables won't spew warnings or exceptions...
@@ -856,9 +855,9 @@ def checkNameValidity(name):
     if reservedIdRE.match(name):
         raise ValueError()
 
-def check_pytables_name(key):
+def _check_pytables_name(key):
     try:
-        checkNameValidity(key)
+        _checkNameValidity(key)
         return True
     except:
         return False
