@@ -368,7 +368,7 @@ First basic container types:
     >>> saveload(x) == x
     True
     >>> loaditem('/obj/abba')
-    1
+    array(1)
     >>> loaditem('/obj/caca').tostring()
     'zhar'
 
@@ -396,9 +396,9 @@ Ditto for nested instances
     >>> loaditem('/obj/baz').tostring()
     'baz'
     >>> loaditem('/obj/asc/abc_132')
-    111
+    array(111)
     >>> loaditem('/obj/asc/lll_123')
-    222
+    array(222)
 
 
 Array types
