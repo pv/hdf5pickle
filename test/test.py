@@ -529,8 +529,10 @@ class PickleTests(pickletester.AbstractPickleTests,
                 y = self.loads(s)
                 self.assert_(x is y, (proto, x, s, y))
 
-def additional_tests():
+def suite():
     suite = unittest.TestSuite()
-    suite.addTests(doctest.DocTestSuite())
-    #suite.addTests(doctest.DocTestSuite(p))
+    suite.addTest(unittest.makeSuite(PickleTests))
+    suite.addTest(doctest.DocTestSuite())
+    try: suite.addTest(doctest.DocTestSuite(p))
+    except ValueError: pass
     return suite
