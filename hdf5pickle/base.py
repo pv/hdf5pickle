@@ -1,96 +1,5 @@
-"""
-==========
-hdf5pickle
-==========
-
-:Author:  Pauli Virtanen <pav@iki.fi>
-
-Create easily interfaceable representations of Python objects in HDF5
-files. The aim of this module is to provide both
-
-    (1) convenient Python object persistence
-    (2) compatibility with non-Python applications
-
-Point 2 is important, for example, if results from numerical
-calculations should be easily transferable for example to a non-Python
-visualization program. Writing code for dumping data creates mostly
-unnecessary hassle.
-
-This module implements `dump` and `load` methods analogous to those in
-Python's pickle module. The programming interface corresponds to
-pickle protocol 2, although the data is not serialized but saved in
-HDF5 files.
-
-
-Data format
------------
-
-The structure of a python object saved to a HDF5 node is as follows:
-
-* basic types (None, bool, int, float, complex)::
-
-    array [(1,), int/float] = NONE/BOOL/INT/FLOAT/COMPLEX
-        .pickletype         = PICKLE_TYPE
-
-* basic stream types (long, str, unicode).
-  longs and unicodes are converted to strs (pickle.encode_long and utf-8)::
-
-    array [(n,), int8] = DATA
-        .pickletype    = LONG/STR/UNICODE
-        .empty     = 1 #if len(DATA) == 0
-    
-   These can't at present be stored as real string arrays, as PyTables
-   chops of strings at '\x00' chars.
-
-* dicts::
-
-    group
-        .pickletype  = DICT
-
-        #for KEY, VALUE in DICT:
-         #if KEY is a string and a valid python variable name
-        KEY          = node for VALUE
-         #else
-        SURROGATE    = node for VALUE
-        __/SURROGATE = node for KEY
-         #end if
-        #end for
-    
-* instances::
-
-    group
-        .pickletype         = INST/REDUCE
-    
-        #if through __reduce__ / new-style class
-        .has_reduce_content = 1 if state present
-        __/args             = arguments for class.__new__ or func
-        __/func             = creation func
-        __/cls              = creation class
-        #else
-        __/args             = arguments for class.__init__
-        __/cls              = creation class
-        #endif
-    
-        #if state is dict
-        insert entries of dict here as in dict
-        #else
-        __/content          = node for content
-        #endif
-
-* globals (classes, etc)::
-
-    array [as for strings] = GLOBAL/EXT4 data locator, as in pickle
-        .pickletype        = GLOBAL/EXT4
-
-* reference to an object elsewhere::
-
-    group
-        .pickletype        = REF
-        .target            = abs. path to the referred object in this file
-
-"""
-
-__all__ = ['dump', 'load', 'Pickler', 'Unpickler']
+__all__ = ['dump', 'load', 'Pickler', 'Unpickler',
+           'dump_many', 'load_many']
 
 __revision__ = "$Id: hdf5serialize.py 2937 2006-07-28 18:42:24Z pauli $"
 __docformat__ = "restructuredtext en"
@@ -152,9 +61,16 @@ try:
 except ImportError: pass
 except ValueError: pass
 
-### Carry on
+
+#############################################################################
+
 
 class FileInterface(object):
+    """
+    Internal interface to a `tables.File` object.
+
+    Includes convenience functions, including type conversion.
+    """
     def __init__(self, file):
         self.file = file
     
@@ -247,7 +163,21 @@ class FileInterface(object):
         return self.file.createGroup(where, name)
 
 
+#############################################################################
+
+
 class Pickler(object):
+    """
+    Pickles Python objects to a HDF5 file.
+
+    Usage:
+      1. Instantaniate
+      2. Call `dump` or `clear_memo` as necessary
+
+    You may wish to use a single instance of this class for multiple
+    objects to preserve references. It should be safe to call the `dump`
+    method multiple times, for different paths.
+    """
     def __init__(self, file):
         self.file = FileInterface(file)
         
@@ -263,7 +193,7 @@ class Pickler(object):
         self.paths = {}
         self.memo = {}
 
-    def dump(self, obj, path):
+    def dump(self, path, obj):
         self.save(path, obj)
 
     def save(self, path, obj):
@@ -604,11 +534,27 @@ class Pickler(object):
     dispatch[NumarrayArrayType] = save_numarray_array
 
 
+#############################################################################
+
+
 class Unpickler(object):
+    """
+    Unpickles Python objects from a HDF5 file.
+
+    Usage:
+      1. Instantaniate
+      2. Call `load` or `clear_memo` as needed
+
+    You may wish to use a single instance of this class for multiple
+    objects to preserve references. It should be safe to call the `load`
+    method multiple times, for different paths.
+    """
     def __init__(self, file, protocol=None):
         self.file = FileInterface(file)
         self.memo = {}
-        self.paths = {}
+
+    def clear_memo(self):
+        self.memo = {}
 
     def load(self, path):
         if not path in self.memo:
@@ -881,6 +827,10 @@ class Unpickler(object):
         klass = getattr(mod, name)
         return klass
 
+
+#############################################################################
+
+
 class _EmptyClass:
     pass
 
@@ -913,23 +863,67 @@ def check_pytables_name(key):
     except:
         return False
 
+
+#############################################################################
+
+
 def dump(obj, file, path):
     """
     Dump a Python object to an open PyTables HDF5 file.
-    
-    :Parameters:
-      - `obj`: the object to save
-      - `file`: `tables.File` handle (`tables.File`)
-      - `path`: path to the object in the file (string)
+
+    :param obj:  the object to dump
+    :param file: where to dump
+    :type  file: tables.File
+    :param path: path where to dump in the file
     """
-    Pickler(file).dump(obj, path)
+    Pickler(file).dump(path, obj)
 
 def load(file, path):
     """
     Load a Python object from an open PyTables HDF5 file.
-    
-    :Parameters:
-      - `file`: file handle (`tables.File`)
-      - `path`: path to the object in the file (string)
+
+    :param file: where to load from
+    :type  file: tables.File
+    :param path: path to the object in the file
+
+    :return: loaded object
     """
     return Unpickler(file).load(path)
+
+def dump_many(file, desc):
+    """
+    Dump multiple Python objects to an open PyTables HDF5 file,
+    preserving any references between the objects.
+
+    Calling `dump(file, path)` many times for objects keeping references
+    to each other would result in duplicated data.
+
+    :param file: where to dump
+    :type  file: tables.File
+    :param desc: a list of (path, obj)
+    """
+    p = Pickler(file)
+    for path, obj in desc:
+        p.dump(path, obj)
+
+def load_many(file, paths):
+    """
+    Load multiple Python objects from the file, preserving any
+    references between them.
+
+    Calling `load(file, path)` many times for objects keeping references
+    to each other would result to duplicated data.
+
+    :param file: where to dump
+    :type  file: tables.File
+    :param paths: a list of paths where to load from
+
+    :return: list of (path, object)
+    """    
+    p = Unpickler(file)
+    r = []
+    for path in paths:
+        obj = p.load(path)
+        r.append( (path, obj) )
+    return r
+
