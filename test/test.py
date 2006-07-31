@@ -404,17 +404,17 @@ Ditto for nested instances
 Array types
 -----------
 
-    >>> import numarray, pickle
 
-    >>> for pkg in ['numarray', 'Numeric']:#, 'numpy']:
+    >>> for pkg in ['numarray', 'Numeric', 'numpy']:
     ...     for ary in [ [1.,2.,3.],
     ...                  [[1+0j,2+3.2j],[2,4]],
-    ...                  'abba\x000caca\x000',
     ...                ]:
-    ...         m = __import__(pkg)
+    ...         try: m = __import__(pkg)
+    ...         except ImportError: continue
     ...         a = m.array(ary)
     ...         a2 = saveload(a)
-    ...         assert (numarray.all(a == a2) and type(a) == type(a2) and
+    ...         assert (m.alltrue(m.ravel(a == a2)) and
+    ...                 type(a) == type(a2) and
     ...                 a.typecode() == a2.typecode())
 
 
