@@ -413,9 +413,11 @@ Array types
     ...         except ImportError: continue
     ...         a = m.array(ary)
     ...         a2 = saveload(a)
-    ...         assert (m.alltrue(m.ravel(a == a2)) and
-    ...                 type(a) == type(a2) and
-    ...                 a.typecode() == a2.typecode())
+    ...         assert (m.alltrue(m.ravel(a == a2)) and type(a) == type(a2))
+    ...         if pkg == 'numpy':
+    ...             assert a.dtype == a2.dtype
+    ...         else:
+    ...             assert a.typecode() == a2.typecode()
 
 
 Cleanup
