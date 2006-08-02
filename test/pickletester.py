@@ -1,3 +1,11 @@
+#
+# Copyright (c) 2001, 2002, 2003, 2004 Python Software Foundation; All Rights Reserved
+#
+
+# This file originates from Python 2.4.3.
+# The "protocols" has been hard-coded to [2] below.
+
+
 import unittest
 import pickle
 import cPickle

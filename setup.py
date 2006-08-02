@@ -75,6 +75,6 @@ a HDF5 file, it can easily be examined with for example Octave_.
 """,
 
     test_suite = "test.test",
-    
+
     **extra_args
 )

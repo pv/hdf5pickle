@@ -4,8 +4,7 @@ r"""
 hdf5pickle
 ==========
 
-:author: Pauli Virtanen <pauli@ltl.tkk.fi>
-:organization: Low Temperature Laboratory, Helsinki University of Technology
+:author: Pauli Virtanen <pav@iki.fi>
 
 
 Create easily interoperable representations of Python objects in HDF5_
@@ -14,11 +13,11 @@ files. The aim of this module is to provide both
 (1) convenient Python object persistence
 (2) compatibility with non-Python applications
 
-Point 2 is important, for example, if results from numerical
+Point 2 is useful, for example, if results from numerical
 calculations should be easily transferable for example to a non-Python
 visualization program, such as Octave_. Having a serialized object
 format that is directly readable saves some hassle in writing custom
-data dumping routines for each class.
+data dumping routines for each object.
 
 Of course, if your data does not fit into memory, you still need to
 use full features of PyTables_. But, you can still use hdf5pickle for

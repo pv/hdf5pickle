@@ -432,7 +432,8 @@ import tables
 import doctest, unittest
 import copy_reg
 
-import test_support, pickletester
+import test_support
+import pickletester
 import hdf5pickle as p
 
 class PickleTests(pickletester.AbstractPickleTests,

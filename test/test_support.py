@@ -1,3 +1,9 @@
+#
+# Copyright (c) 2001, 2002, 2003, 2004 Python Software Foundation; All Rights Reserved
+#
+
+# This file originates from Python 2.4.3. No changes have been made.
+
 """Supporting definitions for the Python regression tests."""
 
 if __name__ != 'test.test_support':
