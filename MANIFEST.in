@@ -1,4 +1,5 @@
 recursive-include test *.py
 recursive-include doc *.html *.js *.css *.png
 recursive-include hdf5pickle *.py
+include LICENSE.txt
 
