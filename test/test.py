@@ -368,7 +368,7 @@ First basic container types:
     >>> saveload(x) == x
     True
     >>> loaditem('/obj/abba')
-    1
+    array(1)
     >>> loaditem('/obj/caca').tostring()
     'zhar'
 
@@ -396,9 +396,9 @@ Ditto for nested instances
     >>> loaditem('/obj/baz').tostring()
     'baz'
     >>> loaditem('/obj/asc/abc_132')
-    111
+    array(111)
     >>> loaditem('/obj/asc/lll_123')
-    222
+    array(222)
 
 
 Array types
@@ -413,9 +413,11 @@ Array types
     ...         except ImportError: continue
     ...         a = m.array(ary)
     ...         a2 = saveload(a)
-    ...         assert (m.alltrue(m.ravel(a == a2)) and
-    ...                 type(a) == type(a2) and
-    ...                 a.typecode() == a2.typecode())
+    ...         assert (m.alltrue(m.ravel(a == a2)) and type(a) == type(a2))
+    ...         if pkg == 'numpy':
+    ...             assert a.dtype == a2.dtype
+    ...         else:
+    ...             assert a.typecode() == a2.typecode()
 
 
 Cleanup
@@ -529,8 +531,10 @@ class PickleTests(pickletester.AbstractPickleTests,
                 y = self.loads(s)
                 self.assert_(x is y, (proto, x, s, y))
 
-def additional_tests():
+def suite():
     suite = unittest.TestSuite()
-    suite.addTests(doctest.DocTestSuite())
-    #suite.addTests(doctest.DocTestSuite(p))
+    suite.addTest(unittest.makeSuite(PickleTests))
+    suite.addTest(doctest.DocTestSuite())
+    try: suite.addTest(doctest.DocTestSuite(p))
+    except ValueError: pass
     return suite
