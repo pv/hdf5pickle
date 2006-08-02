@@ -531,6 +531,9 @@ class PickleTests(pickletester.AbstractPickleTests,
                 y = self.loads(s)
                 self.assert_(x is y, (proto, x, s, y))
 
+def additional_tests():
+    return doctest.DocTestSuite()
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(PickleTests))
