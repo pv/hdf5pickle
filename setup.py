@@ -66,7 +66,7 @@ files. The aim of this module is to provide both
     (1) convenient Python object persistence
     (2) compatibility with non-Python applications
 
-Point 2 is important, for example, if results from numerical
+Point 2 is useful, for example, if results from numerical
 calculations should be easily transferable for example to a non-Python
 visualization program. For example, if program state is serialized to
 a HDF5 file, it can easily be examined with for example Octave_.
