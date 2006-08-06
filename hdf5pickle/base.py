@@ -24,6 +24,7 @@ NUMPY    = 'NP'
 NUMERIC  = 'NU'
 
 HIGHEST_PROTOCOL = 2
+"""The pickling (programming) protocol supported by this module"""
 
 def _DEBUG(*args):
     sys.stderr.write(' '.join(map(str, args)) + '\n')
@@ -42,25 +43,31 @@ except NameError:
 
 NumericArrayType = None
 try:
-    tables.checkflavor('Numeric', 'f')
+    try: tables.checkflavor('Numeric', 'f')
+    except TypeError: tables.checkflavor('Numeric', 'f', '')
     from Numeric import ArrayType as NumericArrayType
 except ImportError: pass
 except ValueError: pass
 
 NumarrayArrayType = None
 try:
-    tables.checkflavor('NumArray', 'f')
+    try: tables.checkflavor('NumArray', 'f')
+    except TypeError: tables.checkflavor('NumArray', 'f', '')
     from numarray import ArrayType as NumarrayArrayType
 except ImportError: pass
 except ValueError: pass
 
 NumpyArrayType = None
 try:
-    tables.checkflavor('Numpy', 'f')
+    try: tables.checkflavor('numpy', 'f')
+    except TypeError: tables.checkflavor('numpy', 'f', '')
     from numpy import ArrayType as NumpyArrayType
 except ImportError: pass
 except ValueError: pass
 
+
+HDF5PICKLE_PROTOCOL = 1
+"""Identifier for the current HDF5 pickling protocol"""
 
 #############################################################################
 
@@ -192,7 +199,11 @@ class Pickler(object):
         self.paths = {}
         self.memo = {}
 
-        self.proto = 2 # hard-coded
+        self.proto = HDF5PICKLE_PROTOCOL # hard-coded
+
+        self.file.set_attr(self.file.get_path('/'),
+                           'hdf5pickle_protocol',
+                           HDF5PICKLE_PROTOCOL)
 
     def _keep_alive(self, obj):
         self.memo[id(obj)] = obj
@@ -297,7 +308,7 @@ class Pickler(object):
         self.file.set_attr(group, 'pickletype', REDUCE)
 
         # Protocol 2 special case: if func's name is __newobj__, use NEWOBJ
-        if self.proto >= 2 and getattr(func, "__name__", "") == "__newobj__":
+        if getattr(func, "__name__", "") == "__newobj__":
             # A __reduce__ implementation can direct protocol 2 to
             # use the more efficient NEWOBJ opcode, while still
             # allowing protocol 0 and 1 to work normally.  For this to
@@ -503,12 +514,12 @@ class Pickler(object):
                     (obj, module, name))
 
         pickletype = None
-        if self.proto >= 2:
-            code = _extension_registry.get((module, name))
-            if code:
-                assert code > 0
-                pickletype = EXT4
-                stuff = pack("<i", code)
+
+        code = _extension_registry.get((module, name))
+        if code:
+            assert code > 0
+            pickletype = EXT4
+            stuff = pack("<i", code)
         
         if not pickletype:
             stuff = module + '\n' + name
