@@ -39,6 +39,11 @@ try:
 except NameError:
     UnicodeType = None
 
+try:
+    from tables import NoSuchNodeError
+except ImportError:
+    NoSuchNodeError = LookupError
+
 ### Check what PyTables supports on this system
 
 NumericArrayType = None
@@ -118,7 +123,7 @@ class _FileInterface(object):
         try:
             self.file.getNode(path)
             return True
-        except LookupError:
+        except NoSuchNodeError:
             return False
 
     def save_array(self, path, data):
