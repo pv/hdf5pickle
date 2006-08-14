@@ -76,7 +76,7 @@ try:
         NumpyArrayType_native = True
     except ValueError:
         pass
-    from numpy import ArrayType as NumpyArrayType
+    from numpy.oldnumeric import ArrayType as NumpyArrayType
 except ImportError:
     pass
 
