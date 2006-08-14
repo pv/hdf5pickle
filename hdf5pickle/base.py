@@ -47,28 +47,38 @@ except ImportError:
 ### Check what PyTables supports on this system
 
 NumericArrayType = None
+NumericArrayType_native = False
 try:
-    try: tables.checkflavor('Numeric', 'f')
-    except TypeError: tables.checkflavor('Numeric', 'f', '')
+    try:
+        try: tables.checkflavor('Numeric', 'f')
+        except TypeError: tables.checkflavor('Numeric', 'f', '')
+        NumpyArrayType_native = True
+    except ValueError:
+        pass
     from Numeric import ArrayType as NumericArrayType
-except ImportError: pass
-except ValueError: pass
+except ImportError:
+    pass
 
 NumarrayArrayType = None
 try:
-    try: tables.checkflavor('NumArray', 'f')
-    except TypeError: tables.checkflavor('NumArray', 'f', '')
+    #try: tables.checkflavor('NumArray', 'f')
+    #except TypeError: tables.checkflavor('NumArray', 'f', '')
     from numarray import ArrayType as NumarrayArrayType
-except ImportError: pass
-except ValueError: pass
+except ImportError:
+    pass
 
 NumpyArrayType = None
+NumpyArrayType_native = False
 try:
-    try: tables.checkflavor('numpy', 'f')
-    except TypeError: tables.checkflavor('numpy', 'f', '')
+    try:
+        try: tables.checkflavor('numpy', 'f')
+        except TypeError: tables.checkflavor('numpy', 'f', '')
+        NumpyArrayType_native = True
+    except ValueError:
+        pass
     from numpy import ArrayType as NumpyArrayType
-except ImportError: pass
-except ValueError: pass
+except ImportError:
+    pass
 
 
 HDF5PICKLE_PROTOCOL = 1
@@ -539,12 +549,16 @@ class Pickler(object):
     _dispatch[TypeType] = _save_global
 
     def _save_numeric_array(self, path, obj):
+        if not NumericArrayType_native:
+            obj = numarray.asarray(obj)
         array = self.file.save_numeric_array(path, obj)
         self.file.set_attr(array, 'pickletype', NUMERIC)
         return array
     _dispatch[NumericArrayType] = _save_numeric_array
 
     def _save_numpy_array(self, path, obj):
+        if not NumpyArrayType_native:
+            obj = numarray.asarray(obj)
         array = self.file.save_numeric_array(path, obj)
         self.file.set_attr(array, 'pickletype', NUMPY)
         return array
