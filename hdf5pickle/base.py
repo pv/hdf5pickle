@@ -76,8 +76,11 @@ try:
         NumpyArrayType_native = True
     except ValueError:
         pass
+    # check that conversion is possible
+    import numpy
+    numarray.asarray(numpy.array([1,2,3]))
     from numpy.oldnumeric import ArrayType as NumpyArrayType
-except ImportError:
+except (ImportError, TypeError):
     pass
 
 
@@ -155,8 +158,7 @@ class _FileInterface(object):
                         raise TypeError
             if type_ is str:
                 return self.file.createArray(where, name, numarray.array(
-                    map(ord, data), type=self.type_map.get(str,
-                                                           numarray.UInt8)))
+                    data, type=self.type_map.get(str, numarray.UInt8)))
             return self.file.createArray(where, name, numarray.array(
                 data, type=self.type_map.get(btype)))
         elif type_ in (int, float, complex):
@@ -175,7 +177,7 @@ class _FileInterface(object):
                 return type_()
             else:
                 if type_ is str:
-                    return ''.join(map(chr, node.read()))
+                    return numarray.asarray(node.read()).tostring()
                 return type_(node.read())
         elif type_ in (int, float):
             return type_(node.read())
