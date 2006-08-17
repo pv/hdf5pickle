@@ -122,4 +122,4 @@ depending on the type of the Python object.
 from base import *
 
 __docformat__ = "restructuredtext en"
-__version__ = "0.1.1"
+__version__ = "0.1.2"

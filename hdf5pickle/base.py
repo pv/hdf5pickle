@@ -1,9 +1,7 @@
 __all__ = ['dump', 'load', 'Pickler', 'Unpickler',
            'dump_many', 'load_many']
 
-__revision__ = "$Id: hdf5serialize.py 2937 2006-07-28 18:42:24Z pauli $"
 __docformat__ = "restructuredtext en"
-__version__ = "0.1"
 
 from copy_reg import dispatch_table
 from copy_reg import _extension_registry, _inverted_registry, _extension_cache
