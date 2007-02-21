@@ -7,7 +7,7 @@ from copy_reg import dispatch_table
 from copy_reg import _extension_registry, _inverted_registry, _extension_cache
 from types import *
 import keyword, marshal
-import tables, numarray, cPickle as pickle, re, struct, sys
+import tables, numpy, cPickle as pickle, re, struct, sys
 
 from pickle import whichmodule, PicklingError, FLOAT, INT, LONG, NONE, \
      REDUCE, STRING, UNICODE, GLOBAL, DICT, INST, LIST, TUPLE, EXT4, \
@@ -47,7 +47,7 @@ try:
 except ImportError:
     import tables.flavor
     def checkflavor(flavor, x=None, y=None):
-        return flavor in tables.flavor.all_flavors
+        return flavor.lower() in tables.flavor.all_flavors
 
 ### Check what PyTables supports on this system
 
@@ -60,14 +60,21 @@ try:
         NumpyArrayType_native = True
     except ValueError:
         pass
+    import Numeric
     from Numeric import ArrayType as NumericArrayType
 except ImportError:
     pass
 
 NumarrayArrayType = None
+NumarrayArrayType_native = False
 try:
-    #try: checkflavor('NumArray', 'f')
-    #except TypeError: checkflavor('NumArray', 'f', '')
+    try:
+        try: checkflavor('NumArray', 'f')
+        except TypeError: checkflavor('NumArray', 'f', '')
+        NumarrayArrayType_native = True
+    except ValueError:
+        pass
+    import numarray
     from numarray import ArrayType as NumarrayArrayType
 except ImportError:
     pass
@@ -151,7 +158,7 @@ class _FileInterface(object):
         if type_ in (tuple, list, str):
             if len(data) == 0:
                 array = self.file.createArray(
-                    where, name, numarray.array([0], type=numarray.Int8))
+                    where, name, numpy.array([0], dtype=numpy.int8))
                 self.set_attr(array, 'empty', 1)
                 return array
             elif type_ in (tuple, list):
@@ -162,13 +169,18 @@ class _FileInterface(object):
                     if type(item) != btype:
                         raise TypeError
             if type_ is str:
-                return self.file.createArray(where, name, numarray.array(
-                    data, type=self.type_map.get(str, numarray.UInt8)))
-            return self.file.createArray(where, name, numarray.array(
-                data, type=self.type_map.get(btype)))
+                # FIXME: pytables chops off NULs from strings!
+                #        protect via encoding in 8-bytes
+                return self.file.createArray(where, name, numpy.fromstring(
+                    data, dtype=self.type_map.get(str, numpy.uint8)))
+            return self.file.createArray(where, name, numpy.array(
+                data, dtype=self.type_map.get(btype)))
         elif type_ in (int, float, complex):
-            return self.file.createArray(where, name, numarray.array(
-                data, type=self.type_map.get(type_)))
+            return self.file.createArray(where, name, numpy.array(
+                data, dtype=self.type_map.get(type_)))
+        elif type_ in (long,):
+            return self.file.createArray(where, name, numpy.array(
+                data, dtype=self.type_map.get(type_, numpy.object_)))
         else:
             raise TypeError
 
@@ -182,16 +194,17 @@ class _FileInterface(object):
                 return type_()
             else:
                 if type_ is str:
-                    return numarray.asarray(node.read()).tostring()
+                    # FIXME: pytables chops off NULs from strings!
+                    #        protect via encoding in 8-bytes
+                    return numpy.asarray(node.read()).tostring()
                 return type_(node.read())
         elif type_ in (int, float):
             return type_(node.read())
         elif type_ is bool:
-            return type_(numarray.alltrue(node.read()))
+            return type_(numpy.alltrue(node.read()))
         elif type_ is complex:
             data = node.read()
-            data.ravel()
-            return complex(data[0])
+            return complex(data[()])
         else:
             raise TypeError()
 
@@ -557,7 +570,7 @@ class Pickler(object):
 
     def _save_numeric_array(self, path, obj):
         if not NumericArrayType_native:
-            obj = numarray.asarray(obj)
+            obj = numpy.asarray(obj)
         array = self.file.save_numeric_array(path, obj)
         self.file.set_attr(array, 'pickletype', NUMERIC)
         return array
@@ -565,13 +578,15 @@ class Pickler(object):
 
     def _save_numpy_array(self, path, obj):
         if not NumpyArrayType_native:
-            obj = numarray.asarray(obj)
+            obj = numpy.asarray(obj)
         array = self.file.save_numeric_array(path, obj)
         self.file.set_attr(array, 'pickletype', NUMPY)
         return array
     _dispatch[NumpyArrayType] = _save_numpy_array
 
     def _save_numarray_array(self, path, obj):
+        if not NumarrayArrayType_native:
+            obj = numpy.asarray(obj)
         array = self.file.save_numeric_array(path, obj)
         self.file.set_attr(array, 'pickletype', NUMARRAY)
         return array
@@ -920,8 +935,8 @@ def dump(obj, file, path, type_map=None):
     :type  file: tables.File
     :param path: path where to dump in the file
     :param type_map:
-        mapping of Python basic types (str, int, ...) to numarray types.
-        If ``None``, numarray's default mapping is used.
+        mapping of Python basic types (str, int, ...) to numpy types.
+        If ``None``, numpy's default mapping is used.
     """
     Pickler(file, type_map=type_map).dump(path, obj)
 
@@ -949,8 +964,8 @@ def dump_many(file, desc, type_map=None):
     :type  file: tables.File
     :param desc: a list of (path, obj)
     :param type_map:
-        mapping of Python basic types (str, int, ...) to numarray types.
-        If ``None``, numarray's default mapping is used.
+        mapping of Python basic types (str, int, ...) to numpy types.
+        If ``None``, numpy's default mapping is used.
     """
     p = Pickler(file, type_map=type_map)
     for path, obj in desc:
