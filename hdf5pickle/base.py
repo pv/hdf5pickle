@@ -42,14 +42,21 @@ try:
 except ImportError:
     NoSuchNodeError = LookupError
 
+try:
+    from tables import checkflavor
+except ImportError:
+    import tables.flavor
+    def checkflavor(flavor, x=None, y=None):
+        return flavor in tables.flavor.all_flavors
+
 ### Check what PyTables supports on this system
 
 NumericArrayType = None
 NumericArrayType_native = False
 try:
     try:
-        try: tables.checkflavor('Numeric', 'f')
-        except TypeError: tables.checkflavor('Numeric', 'f', '')
+        try: checkflavor('Numeric', 'f')
+        except TypeError: checkflavor('Numeric', 'f', '')
         NumpyArrayType_native = True
     except ValueError:
         pass
@@ -59,8 +66,8 @@ except ImportError:
 
 NumarrayArrayType = None
 try:
-    #try: tables.checkflavor('NumArray', 'f')
-    #except TypeError: tables.checkflavor('NumArray', 'f', '')
+    #try: checkflavor('NumArray', 'f')
+    #except TypeError: checkflavor('NumArray', 'f', '')
     from numarray import ArrayType as NumarrayArrayType
 except ImportError:
     pass
@@ -69,8 +76,8 @@ NumpyArrayType = None
 NumpyArrayType_native = False
 try:
     try:
-        try: tables.checkflavor('numpy', 'f')
-        except TypeError: tables.checkflavor('numpy', 'f', '')
+        try: checkflavor('numpy', 'f')
+        except TypeError: checkflavor('numpy', 'f', '')
         NumpyArrayType_native = True
     except ValueError:
         pass

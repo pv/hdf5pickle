@@ -115,20 +115,20 @@ Homogenous list should be saved as arrays:
     [1, 2, 3, 4, 5, 6, 7]
     >>> map(int, loadnode().shape)
     [7]
-    >>> type(loadnode())
-    <class 'tables.Array.Array'>
+    >>> type(loadnode()) # doctest: +ELLIPSIS
+    <class 'tables...Array'>
 
     >>> saveload(['a', 'b', 'c', 'd', 'e', 'f'])
     ['a', 'b', 'c', 'd', 'e', 'f']
-    >>> type(loadnode())
-    <class 'tables.Group.Group'>
+    >>> type(loadnode()) # doctest: +ELLIPSIS
+    <class 'tables...Group'>
 
 Mixed list not so:
 
     >>> saveload([1, 2, 'c', 'a', 'b'])
     [1, 2, 'c', 'a', 'b']
-    >>> type(loadnode())
-    <class 'tables.Group.Group'>
+    >>> type(loadnode()) # doctest: +ELLIPSIS
+    <class 'tables...Group'>
 
 Simple tuples, like lists
 
@@ -139,13 +139,13 @@ Simple tuples, like lists
 
     >>> saveload(('a', 'b', 'c', 'd', 'e', 'f'))
     ('a', 'b', 'c', 'd', 'e', 'f')
-    >>> type(loadnode())
-    <class 'tables.Group.Group'>
+    >>> type(loadnode()) # doctest: +ELLIPSIS
+    <class 'tables...Group'>
 
     >>> saveload((1, 2, 'c', 'a', 'b'))
     (1, 2, 'c', 'a', 'b')
-    >>> type(loadnode())
-    <class 'tables.Group.Group'>
+    >>> type(loadnode()) # doctest: +ELLIPSIS
+    <class 'tables...Group'>
 
 Empty arrays and tuples should work:
 
@@ -251,8 +251,8 @@ Picklable dict
 
 The contents of the class are naturally placed
 
-    >>> type(loadnode('/obj/foo'))
-    <class 'tables.Array.Array'>
+    >>> type(loadnode('/obj/foo')) # doctest: +ELLIPSIS
+    <class 'tables...Array'>
     >>> loaditem('/obj/quux')
     array((2+3j))
 
@@ -284,8 +284,8 @@ overridden after __init__ is called.
     >>> y.a
     42L
 
-    >>> type(loadnode('/obj/__/args'))
-    <class 'tables.Group.Group'>
+    >>> type(loadnode('/obj/__/args')) # doctest: +ELLIPSIS
+    <class 'tables...Group'>
 
 New-style class using __getnewargs__.
 
