@@ -109,6 +109,9 @@ Basic types
     >>> saveload(u'Jørgen Bjürström')
     u'J\xc3\xb8rgen Bj\xc3\xbcrstr\xc3\xb6m'
 
+    >>> saveload('a\x00\x00b\x00\x00c\x00\x00d\x00\x00')
+    'a\x00\x00b\x00\x00c\x00\x00d\x00\x00'
+
 Homogenous list should be saved as arrays:
 
     >>> saveload([1, 2, 3, 4, 5, 6, 7])
