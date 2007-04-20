@@ -53,7 +53,7 @@ setup(
     author = "Pauli Virtanen",
     author_email = "pav@iki.fi",
     description = "Pickle Python objects to HDF5 files",
-    license = "BSD",
+    license = "BSD & Python Software Foundation License",
     keywords = "hdf5 pickle pytables",
     url = "",
 

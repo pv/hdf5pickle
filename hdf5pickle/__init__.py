@@ -1,3 +1,4 @@
+# Copyright (c) 2006 Pauli Virtanen <pav@iki.fi>
 r"""
 
 ==========
