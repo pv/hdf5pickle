@@ -57,7 +57,7 @@ setup(
     keywords = "hdf5 pickle pytables",
     url = "",
 
-    #install_requires = ['PyTables', 'NumArray'],
+    install_requires = ['tables >= 2.0b1'],
 
     long_description = """
 Create easily interfaceable representations of Python objects in HDF5
