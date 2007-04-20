@@ -1,10 +1,4 @@
-
-All files in this project except
-
-    test/test_support.py
-    test/pickletester.py
-
-are provided under the following (BSD-style) license:
+This project is distributed under the following (BSD-style) license:
 
     Copyright (c) 2006 Pauli Virtanen. All rights reserved.
     
@@ -34,9 +28,9 @@ are provided under the following (BSD-style) license:
     OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
     ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-The files ``test/test_support.py`` and ``test/pickletester.py`` originate from
-Python 2.4.3 and are distributed under the Python Software Foundation License,
-listed below:
+Note that the files ``test/test_support.py``, ``test/pickletester.py`` and
+``hdf5pickle/base.py`` originate from Python 2.4.3 and are distributed
+under the Python Software Foundation License, listed below:
 
     PSF LICENSE AGREEMENT FOR PYTHON 2.4
     ------------------------------------

@@ -1,3 +1,12 @@
+# This file is heavily adapted from 'pickle.py' in Python 2.4:
+# Copyright (c) 2001, 2002, 2003, 2004 Python Software Foundation
+# All Rights Reserved.
+#
+# Modifications to use Pytables:
+# Copyright (c) 2006 Pauli Virtanen <pav@iki.fi>
+#
+# See LICENSE.txt for some legalese.
+
 __all__ = ['dump', 'load', 'Pickler', 'Unpickler',
            'dump_many', 'load_many']
 
