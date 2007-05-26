@@ -595,6 +595,33 @@ class Pickler(object):
 
 #############################################################################
 
+class Container(dict):
+    """Convenience container"""
+    def __getattr__(self, x):
+        try: return self[x]
+        except KeyError: raise AttributeError(x)
+    def __setattr__(self, x, value):
+        try: self[x] = value
+        except KeyError: raise AttributeError(x)
+    def __delattr__(self, x):
+        try: del self[x]
+        except KeyError: raise AttributeError(x)
+    def __do_cmp(self, a, b):
+        return cmp(a[0], b[0])
+    def __str__(self):
+        s = ""
+        items = sorted(self.iteritems(), self.__do_cmp)
+        for key, value in items:
+            if not key.startswith('_'):
+                s += "  %s: %s\n" % (key, value)
+        return s
+    def __repr__(self):
+        s = ""
+        items = sorted(self.iteritems(), self.__do_cmp)
+        for key, value in items:
+            if not key.startswith('_'):
+                s += "  %s: %r\n" % (key, value)
+        return "<Container\n%s>" % s
 
 class Unpickler(object):
     """
@@ -636,32 +663,6 @@ class Unpickler(object):
         if hasattr(node, 'read'):
             return node.read()
         else:
-            class Container(dict):
-                def __getattr__(self, x):
-                    try: return self[x]
-                    except KeyError: raise AttributeError(x)
-                def __setattr__(self, x, value):
-                    try: self[x] = value
-                    except KeyError: raise AttributeError(x)
-                def __delattr__(self, x):
-                    try: del self[x]
-                    except KeyError: raise AttributeError(x)
-                def __do_cmp(self, a, b):
-                    return cmp(a[0], b[0])
-                def __str__(self):
-                    s = ""
-                    items = sorted(self.iteritems(), self.__do_cmp)
-                    for key, value in items:
-                        if not key.startswith('_'):
-                            s += "  %s: %s\n" % (key, value)
-                    return s
-                def __repr__(self):
-                    s = ""
-                    items = sorted(self.iteritems(), self.__do_cmp)
-                    for key, value in items:
-                        if not key.startswith('_'):
-                            s += "  %s: %r\n" % (key, value)
-                    return "<Container\n%s>" % s
             container = Container()
             self._load_dict_content(node, container)
             return container
