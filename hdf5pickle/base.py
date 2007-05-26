@@ -618,7 +618,10 @@ class Unpickler(object):
     def load(self, path):
         if not path in self.memo:
             node = self.file.get_path(path)
-            key = self.file.get_attr(node, 'pickletype')
+            try:
+                key = self.file.get_attr(node, 'pickletype')
+            except AttributeError:
+                key = None
             if key:
                 f = self._dispatch[key]
                 obj = f(self, node)
