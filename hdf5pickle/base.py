@@ -626,11 +626,45 @@ class Unpickler(object):
                 f = self._dispatch[key]
                 obj = f(self, node)
             else:
-                obj = node.read()
+                obj = self._load_raw(node)
             self.memo[path] = obj
         return self.memo[path]
 
     _dispatch = {}
+
+    def _load_raw(self, node):
+        if hasattr(node, 'read'):
+            return node.read()
+        else:
+            class Container(dict):
+                def __getattr__(self, x):
+                    try: return self[x]
+                    except KeyError: raise AttributeError(x)
+                def __setattr__(self, x, value):
+                    try: self[x] = value
+                    except KeyError: raise AttributeError(x)
+                def __delattr__(self, x):
+                    try: del self[x]
+                    except KeyError: raise AttributeError(x)
+                def __do_cmp(self, a, b):
+                    return cmp(a[0], b[0])
+                def __str__(self):
+                    s = ""
+                    items = sorted(self.iteritems(), self.__do_cmp)
+                    for key, value in items:
+                        if not key.startswith('_'):
+                            s += "  %s: %s\n" % (key, value)
+                    return s
+                def __repr__(self):
+                    s = ""
+                    items = sorted(self.iteritems(), self.__do_cmp)
+                    for key, value in items:
+                        if not key.startswith('_'):
+                            s += "  %s: %r\n" % (key, value)
+                    return "<Container\n%s>" % s
+            container = Container()
+            self._load_dict_content(node, container)
+            return container
 
     def _load_ref(self, node):
         path = self.file.get_attr(node, 'target')
