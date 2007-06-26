@@ -47,7 +47,7 @@ extra_args['cmdclass']['doc'] = doc
 
 setup(
     name = "hdf5pickle",
-    version = "0.2",
+    version = "0.2.1",
     packages = ["hdf5pickle"],
 
     author = "Pauli Virtanen",

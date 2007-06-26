@@ -1,3 +1,6 @@
+0.2.1
+	Drop bogus numarray dependency.
+
 0.2
 	Pytables 2.0 compatibility.
 

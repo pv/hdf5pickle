@@ -97,11 +97,9 @@ try:
         NumpyArrayType_native = True
     except ValueError:
         pass
-    # check that conversion is possible
     import numpy
-    numarray.asarray(numpy.array([1,2,3]))
     from numpy.oldnumeric import ArrayType as NumpyArrayType
-except (ImportError, TypeError):
+except ImportError:
     pass
 
 
