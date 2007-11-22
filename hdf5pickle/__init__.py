@@ -1,3 +1,4 @@
+# Copyright (c) 2006 Pauli Virtanen <pav@iki.fi>
 r"""
 
 ==========
@@ -122,4 +123,4 @@ depending on the type of the Python object.
 from base import *
 
 __docformat__ = "restructuredtext en"
-__version__ = "0.1.2"
+__version__ = "0.2.1"

@@ -47,17 +47,17 @@ extra_args['cmdclass']['doc'] = doc
 
 setup(
     name = "hdf5pickle",
-    version = "0.1.2",
+    version = "0.2.1",
     packages = ["hdf5pickle"],
 
     author = "Pauli Virtanen",
     author_email = "pav@iki.fi",
     description = "Pickle Python objects to HDF5 files",
-    license = "BSD",
+    license = "BSD & Python Software Foundation License",
     keywords = "hdf5 pickle pytables",
     url = "",
 
-    #install_requires = ['PyTables', 'NumArray'],
+    install_requires = ['tables >= 2.0b1'],
 
     long_description = """
 Create easily interfaceable representations of Python objects in HDF5
