@@ -932,6 +932,15 @@ def _check_pytables_name(key):
 
 #############################################################################
 
+def _with_open_file(file, func, mode):
+    if not isinstance(file, tables.File):
+        file = tables.openFile(file, mode)
+        try:
+            return func(file)
+        finally:
+            file.close()
+    else:
+        return func(file)
 
 def dump(obj, file, path, type_map=None):
     """
@@ -939,25 +948,29 @@ def dump(obj, file, path, type_map=None):
 
     :param obj:  the object to dump
     :param file: where to dump
-    :type  file: tables.File
+    :type  file: tables.File, or, str
     :param path: path where to dump in the file
     :param type_map:
         mapping of Python basic types (str, int, ...) to numpy types.
         If ``None``, numpy's default mapping is used.
     """
-    Pickler(file, type_map=type_map).dump(path, obj)
+    def _dump(f):
+        Pickler(f, type_map=type_map).dump(path, obj)
+    _with_open_file(file, _dump, 'a')
 
 def load(file, path):
     """
     Load a Python object from an open PyTables HDF5 file.
 
     :param file: where to load from
-    :type  file: tables.File
+    :type  file: tables.File, or, str
     :param path: path to the object in the file
 
     :return: loaded object
     """
-    return Unpickler(file).load(path)
+    def _load(f):
+        return Unpickler(f).load(path)
+    return _with_open_file(file, _load, 'r')
 
 def dump_many(file, desc, type_map=None):
     """
@@ -974,9 +987,11 @@ def dump_many(file, desc, type_map=None):
         mapping of Python basic types (str, int, ...) to numpy types.
         If ``None``, numpy's default mapping is used.
     """
-    p = Pickler(file, type_map=type_map)
-    for path, obj in desc:
-        p.dump(path, obj)
+    def _dump(f):
+        p = Pickler(f, type_map=type_map)
+        for path, obj in desc:
+            p.dump(path, obj)
+    _with_open_file(file, _dump, 'a')
 
 def load_many(file, paths):
     """
@@ -992,10 +1007,12 @@ def load_many(file, paths):
 
     :return: list of (path, object)
     """    
-    p = Unpickler(file)
-    r = []
-    for path in paths:
-        obj = p.load(path)
-        r.append( (path, obj) )
-    return r
+    def _load(f):
+        p = Unpickler(f)
+        r = []
+        for path in paths:
+            obj = p.load(path)
+            r.append( (path, obj) )
+        return r
+    return _with_open_file(file, _load, 'r')
 
